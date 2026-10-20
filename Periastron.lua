@@ -1,5 +1,5 @@
 --[[
-	Rip-off Rainbow Pariastron OMEGA v6 - CLIENT-SIDE
+	Rip-off Rainbow Pariastron OMEGA v7 - CLIENT-SIDE
 	Execute once. Gives "Rip-off Rainbow Pariastron OMEGA" to your Backpack (re-given every respawn).
 	Equip it and the buttons appear. Click / tap the screen = swing the sword (swing animation + small slash).
 
@@ -8,7 +8,7 @@
 	  [Lunge]        (V)  dash forward, cutting through NPCs on the way
 	  [Second]       (F)  the style's second ability
 	  [Third]        (G)  the style's third ability: Shadow Tendrils / Seraph Wings / Chrono Rupture / Gamma Cyclone / Crystal Prism / Blood Moon / Midas Shatter
-	  [Sim radius]   (T)  cycles SimulationRadius 50 > 500 > 1000 > 5000 > 10000 (needs sethiddenproperty)
+	  SimulationRadius is set to 1000 automatically (and kept there) when you execute (needs sethiddenproperty).
 	  [Style]        (B)  cycles the Periastron: Noir Psi > Ivory > Azure Alpha > Chartreuse Gamma > Amethyst Kappa > Crimson Mu > Grimgold Beta
 	  [Destructive]  (C)  right above the Style button: bigger, faster, deadlier version of whichever style is picked
 
@@ -20,6 +20,7 @@
 	  Amethyst Kappa    Amethyst Comet      Meteoroids
 	  Crimson Mu        Crimson Pillars     Crescent Wave
 	  Grimgold Beta     Sonar               Echo Strike
+	  Rainbow           Spectrum Cascade    Rainbow Road        (strongest style, unique abilities)
 
 	NPC DAMAGE: every ability hurts NPCs (any Humanoid model that is not a player). Damage = % of the NPC's max health per hit (kept low so abilities don't one-shot; Noir destructive is the exception). EXECUTE: any attack on an NPC at or under 10% health kills it instantly.
 	Noir Black Hole: NPCs + owned parts are dragged up into an End-portal style void, then it explodes: 100% (center) -> 10% (edge) of max health,
@@ -46,7 +47,7 @@ local LEGACY_NAMES = { "Rip-off Ivory Pariastron" }
 local STATUE_NAME = "Angel's Past"
 local ACT = {
 	nova = "IvoryNova", statue = "IvoryStatue", mode = "IvoryMode",
-	step = "IvoryStep", theme = "IvoryTheme", judge = "IvoryJudge", third = "IvoryThird", sim = "IvorySim",
+	step = "IvoryStep", theme = "IvoryTheme", judge = "IvoryJudge", third = "IvoryThird",
 }
 
 local TAU = math.pi * 2
@@ -122,6 +123,8 @@ local STYLES = {
 		pal = { hex("FF8080"), hex("E0132D"), hex("640010") }, glow = hex("FF5050") },
 	{ id = "grimgold", name = "Grimgold Periastron Beta", short = "Grimgold Beta", q = "Sonar", e = "Echo Strike", u = "Midas Shatter", step = "Gold Lunge",
 		pal = { hex("FFE070"), hex("FF9A1F"), hex("8A4A00") }, glow = hex("FFB62E") },
+	{ id = "rainbow", name = "Rainbow Periastron", short = "Rainbow", q = "Spectrum Cascade", e = "Rainbow Road", u = "Chromatic Eclipse", step = "Prism Step",
+		pal = { hex("FFC8F4"), hex("8A63FF"), hex("00C8FF") }, glow = WHITE, flash = WHITE },
 }
 
 -- two modes per style: normal (x1) and destructive (x5.4)
@@ -132,7 +135,7 @@ for i, st in ipairs(STYLES) do
 		local p = st.pal
 		local m = {
 			id = st.id, style = i, big = big, name = st.short .. (big and " Destructive" or ""),
-			scale = big and 5.4 or 1, cooldown = big and 2 or 10, dark = st.dark or false,
+			scale = (big and 5.4 or 1) * (st.id == "rainbow" and 1.25 or 1), cooldown = big and 2 or 10, dark = st.dark or false,
 			pal = p, glow = st.glow, accent = st.accent, mid = p[2], hi = p[1],
 		}
 		if m.dark then
@@ -284,7 +287,7 @@ end
 ---------------------------------------------------------------- tool template (YOUR sword - unchanged look)
 local template = Instance.new("Tool")
 template.Name = TOOL_NAME
-template.ToolTip = "Click = swing  |  Nova [Z]  |  Angel's Past [X]  |  Destructive [C]  |  Lunge [V]  |  Style [B]  |  Second ability [F]  |  Third ability [G]  |  Sim radius [T]"
+template.ToolTip = "Click = swing  |  Nova [Z]  |  Angel's Past [X]  |  Destructive [C]  |  Lunge [V]  |  Style [B]  |  Second ability [F]  |  Third ability [G]"
 template.TextureId = "rbxassetid://157345185" -- inventory icon (the sword texture)
 template.CanBeDropped = false
 template.RequiresHandle = true
@@ -1042,6 +1045,13 @@ local SFX = {
 	glass = 139826391278483,       -- glass_shatter_09
 	energyCharge = 9125973433,     -- Spaceship Blast High Pitch Energy Charge Up (ProSoundEffects)
 	darkCharge = 100719595855360,  -- Dark Energy Charge Up (Hiyori_Komichi)
+	bling = 4612374393,            -- bling_diamond_pickup (thienbao2109): sparkle / chime
+	stormBolt = 168586586,         -- storm_bolt (SuperEvilAzmil): lightning crack
+	psionic = 5272307532,          -- Psionic Storm Impact (SuperEvilAzmil): heavy magic impact
+	gong = 9125585925,             -- Gong single hit (ProSoundEffects)
+	explosion = 5349302454,        -- Explosion (auroruszs)
+	synthStart = 9126070959,       -- Synth Power Start Up (ProSoundEffects): rainbow charge-ups
+	synthTone = 9112884584,        -- Synth Tone (ProSoundEffects): rainbow hum / rush
 }
 
 -- preload every sound once so the FIRST use is not delayed while the asset downloads
@@ -1189,9 +1199,23 @@ local function executeCheck(n)
 	return false
 end
 
+-- if the NPC you hit has no health bar, switch on Roblox's own overhead bar for it
+local function ensureBar(hum)
+	pcall(function()
+		if hum.HealthDisplayType ~= Enum.HumanoidHealthDisplayType.AlwaysOn then
+			hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+		end
+		if hum.DisplayDistanceType == Enum.HumanoidDisplayDistanceType.None then
+			hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+		end
+		if hum.HealthDisplayDistance < 1000 then hum.HealthDisplayDistance = 1000 end
+	end)
+end
+
 local function hurt(n, pct) -- pct = percent of the NPC's MAX health
 	local hum = n.hum
 	if not hum.Parent or hum.Health <= 0 then return end
+	ensureBar(hum)
 	if executeCheck(n) then return end
 	hum.Health = math.max(0, hum.Health - hum.MaxHealth * pct / 100)
 end
@@ -1199,6 +1223,7 @@ end
 local function hurtFrac(n, frac) -- frac of the NPC's MAX health (1 = dead)
 	local hum = n.hum
 	if not hum.Parent or hum.Health <= 0 then return end
+	ensureBar(hum)
 	if executeCheck(n) then return end
 	if frac >= 0.999 then hum.Health = 0 else hum.Health = math.max(0, hum.Health - hum.MaxHealth * frac) end
 end
@@ -1493,6 +1518,7 @@ local NOVAS = {}
 -- instant kill for everything in range when Destructive is on
 local function supernovaDamage(target, ER, m, sq)
 	sfx(SFX.impactExp, 1.5, anchorPart(target, 6), false, 0.85)
+	sfx(SFX.explosion, 1.2, anchorPart(target, 6), false, 0.9)
 	for _, n in ipairs(npcsIn(target, ER)) do
 		local d = (n.root.Position - target).Magnitude
 		local near = 1 - math.clamp(d / ER, 0, 1)
@@ -1630,6 +1656,7 @@ NOVAS.ivory = function(ctx)
 
 			-- the apex: everything hangs for a beat while the sword of light is called
 			sfx(SFX.thunderHuge, 1.4, anchorPart(target, 8), false, 1)
+			sfx(SFX.gong, 1.3, anchorPart(target, 8), false, 1.1)
 			flash(target + V3(0, H * 0.8, 0), 0.9, m)
 			local blade = fxPart({ Color = WHITE, Size = V3(R * 0.22, R * 3.2, R * 0.06), Position = target + V3(0, H * 2.4, 0) })
 			local glowB = fxPart({ Color = pal[1], Transparency = 0.45, Size = V3(R * 0.5, R * 3.4, R * 0.2), Position = target + V3(0, H * 2.4, 0) })
@@ -1934,6 +1961,8 @@ NOVAS.noir = function(ctx)
 			-- BOOM
 			sfx(SFX.bhLaunch, 1.6, anchorPart(hole, 8))
 			sfx(SFX.impactExp, 1.6, anchorPart(hole, 8), false, 0.8)
+			sfx(SFX.psionic, 1.5, anchorPart(hole, 8), false, 0.7)
+			sfx(SFX.gong, 1.2, anchorPart(hole, 8), false, 0.6)
 			local bright = setmetatable({ dark = false, flash = WHITE, tint = WHITE }, { __index = m })
 			flash(hole, 1, bright)
 			burst(anchorPart(hole), { "Core", "Supernova", "Rays_Thick", "Rays_Thin", "Stars" })
@@ -2266,6 +2295,7 @@ NOVAS.crimson = function(ctx)
 			loopSnd = sfx(SFX.crimsonLoop, 2, nil, true)
 			loopSnd2 = sfx(SFX.laserBeam, 1.4, nil, true, 0.85)
 			sfx(SFX.thunderBoom, 1.4, root)
+			sfx(SFX.stormBolt, 1.1, root, false, 0.8)
 			local pillars = {}
 			for i = 1, N do
 				pillars[i] = {
@@ -3511,6 +3541,7 @@ ULT.noir = function(ctx)
 				end
 				task.wait(0.15)
 				shockwave(ground, 26 * sq, 0.5, 0, pal[1])
+				if idx <= 3 then sfx(SFX.psionic, 0.8, anchorPart(ground, 3), false, rf(0.9, 1.2)) end
 				shockwave(ground, 14 * sq, 0.4, 0.05, pal[3])
 				burst(anchorPart(ground + V3(0, 2, 0), 2), { "Stars", "Rays_Thick" })
 				physBlast(ground, 22 * sq, m.scale * 0.5)
@@ -3707,6 +3738,7 @@ ULT.azure = function(ctx)
 	skyOff(1)
 	sfx(SFX.thunderBoom, 1.3, root, false, 1.2)
 	sfx(SFX.explosion2, 1.0, root, false, 1)
+	sfx(SFX.gong, 1.2, root, false, 0.9)
 	flash(root.Position, 0.8, m)
 	shake(0.6, 1.6 * sq)
 	for i = 1, 4 do shockwave(root.Position - V3(0, 2.5, 0), 40 * sq * (1 + i * 0.4), 0.7, i * 0.06, pal[i % 3 + 1]) end
@@ -3829,6 +3861,7 @@ ULT.chartreuse = function(ctx)
 	-- release: everything is thrown outward along its orbit tangent
 	stopSfx(wind, 0.5)
 	sfx(SFX.thunderHuge, 1.2, anchorPart(pos, 5), false, 1.1)
+	sfx(SFX.stormBolt, 1.2, anchorPart(pos, 5), false, 0.9)
 	sfx(SFX.impactExp, 1, anchorPart(pos, 5), false, 0.9)
 	local c = V3(pos.X, groundY, pos.Z)
 	for i = 1, 3 do shockwave(c, R * (1 + i * 0.7), 0.6, i * 0.06, pal[i]) end
@@ -3942,6 +3975,7 @@ ULT.amethyst = function(ctx)
 	stopSfx(beamSnd, 0.3)
 	skyOff(1.2)
 	sfx(SFX.glass, 1.5, anchorPart(center, 5), false, 0.9)
+	sfx(SFX.bling, 1.2, anchorPart(center, 5), false, 0.9)
 	sfx(SFX.explosion2, 1.3, anchorPart(center, 5), false, 1)
 	flash(center, 1, m)
 	for _, b in ipairs(beams) do tweenKill(b, 0.25, { Transparency = 1 }) end
@@ -3973,6 +4007,7 @@ ULT.crimson = function(ctx)
 	local moonPos = target + V3(0, 300 * sq, 0)
 
 	sfx(SFX.thunderHuge, 1.5, root, false, 0.8)
+	sfx(SFX.gong, 1.4, root, false, 0.5)
 	skyOn(0.8, pal[3], 1)
 	local moon = ballPart(moonPos, 4, pal[2], 0.05)
 	local halo = ballPart(moonPos, 4, pal[1], 0.7, { Material = Enum.Material.ForceField })
@@ -4130,6 +4165,7 @@ ULT.grimgold = function(ctx)
 		for _ = 1, m.big and 5 or 3 do
 			local a, rr = rand() * TAU, R * math.sqrt(rand())
 			local pos = target + V3(math.cos(a) * rr, rf(70, 130), math.sin(a) * rr)
+			if rand() < 0.15 then sfx(SFX.bling, 0.35, anchorPart(pos, 2), false, rf(0.9, 1.8)) end
 			local coin = fxPart({ Shape = Enum.PartType.Cylinder, Color = GOLD_C, Size = V3(0.4, 3 * sq, 3 * sq), CFrame = CFrame.new(pos) * CFrame.Angles(rand() * TAU, 0, rand() * TAU) })
 			tweenKill(coin, 0.9, { Position = V3(pos.X, target.Y + 1, pos.Z), Orientation = V3(rand() * 720, 0, rand() * 720) }, ES.Quad, ED.In, 1)
 		end
@@ -4172,6 +4208,375 @@ ULT.grimgold = function(ctx)
 	shockwave(target, R * 0.7, 0.8, 0, GOLD_C)
 end
 
+---------------------------------------------------------------- RAINBOW PERIASTRON (the strongest style, 3 abilities of its own)
+local RB = {}
+function RB.hue(t, s, v) return Color3.fromHSV(t % 1, s or 0.7, v or 1) end
+
+-- Z - SPECTRUM CASCADE: seven colour waves roll out of the target one after another. Every colour does its OWN thing
+-- to whatever it touches (NPCs and owned parts alike): red ignites + blasts out, orange floats up, yellow shocks and
+-- freezes, green drags inward, blue slams down, indigo spins, violet pops everything skyward. Then the rainbow
+-- core erupts out of the centre.
+NOVAS.rainbow = function(ctx)
+	local m, root, character = ctx.m, ctx.root, ctx.character
+	local sq = math.sqrt(m.scale)
+	local R = 190 * sq
+	local target = groundTarget(ctx.aim, root, character)
+
+	sfx(SFX.synthStart, 1.5, root) -- plays the instant you press the button
+	local stopOrbs = chargeOrbs(root, m, 0.8)
+	local tele = telegraph(target, 45 * sq, m, 0.8, 1.9)
+	task.wait(0.8)
+	stopOrbs()
+	tele.circle.lock()
+
+	task.spawn(function()
+		local ok, err = pcall(function()
+			task.wait(0.2)
+			tele.destroy()
+			skyOn(0.4, RB.hue(0.75, 0.6, 0.5), 0.6)
+			flash(target, 0.6, m)
+			shake(0.5, 1 * sq)
+
+			local STAGES, GAP, LIFE, N = 7, 0.55, 1.6, 40
+			local DMG = { 6, 5, 6, 5, 7, 5, 8 } -- % of max health per colour
+			local function vecFor(stage, pos)
+				local fl = flatDir(flat(pos - target))
+				local tang = V3(-fl.Z, 0, fl.X)
+				if stage == 1 then return fl * 170 + V3(0, 70, 0)
+				elseif stage == 2 then return V3(0, 100, 0)
+				elseif stage == 3 then return V3(0, 0, 0)
+				elseif stage == 4 then return -fl * 180 + V3(0, 25, 0)
+				elseif stage == 5 then return V3(0, -270, 0)
+				elseif stage == 6 then return tang * 160 + V3(0, 40, 0)
+				end
+				return V3(0, 230, 0) + fl * 30
+			end
+
+			local rings = {}
+			local hitN, hitO = {}, {}
+			for s = 1, STAGES do hitN[s], hitO[s] = {}, {} end
+			local t0, lastN, lastO = os.clock(), -1, -1
+			local npcList, ownedList = {}, {}
+			local total = (STAGES - 1) * GAP + LIFE
+			local H = 46 * sq
+			while os.clock() - t0 < total do
+				RunService.Heartbeat:Wait()
+				local t = os.clock() - t0
+
+				-- spawn the next colour wave
+				if #rings < STAGES and t >= #rings * GAP then
+					local s = #rings + 1
+					local col = RB.hue((s - 1) / 7, 0.85, 1)
+					local parts, cfs = {}, {}
+					for k = 1, N do
+						parts[k] = fxPart({ Color = col, Transparency = 0.15, Size = V3(7 * sq, H, 3 * sq), Position = target })
+						Debris:AddItem(parts[k], LIFE + 2)
+					end
+					local base = disc(target + V3(0, 0.5, 0), 4, 0.5, col, 0.35)
+					Debris:AddItem(base, LIFE + 1)
+					rings[s] = { stage = s, born = os.clock(), parts = parts, cfs = cfs, col = col, base = base, dead = false }
+					sfx(SFX.bling, 0.9, anchorPart(target, 3), false, 0.7 + s * 0.12)
+					if s == 3 then sfx(SFX.stormBolt, 1.1, anchorPart(target, 3), false, 1) end
+					if s == 5 then sfx(SFX.psionic, 1.1, anchorPart(target, 3), false, 0.9) end
+					flash(target, 0.2, m)
+					shake(0.25, 0.7)
+				end
+
+				if os.clock() - lastN > 0.1 then
+					lastN = os.clock()
+					npcList = npcsIn(target, R + 20)
+				end
+				if os.clock() - lastO > 0.25 then
+					lastO = os.clock()
+					ownedList = ownedRoots(target, R + 20)
+				end
+
+				for s, rg in ipairs(rings) do
+					if not rg.dead then
+						local age = os.clock() - rg.born
+						local p = age / LIFE
+						if p >= 1 then
+							rg.dead = true
+							for _, pt in ipairs(rg.parts) do tweenKill(pt, 0.3, { Transparency = 1 }) end
+							tweenKill(rg.base, 0.3, { Transparency = 1 })
+						else
+							local rr = R * (1 - (1 - p) ^ 2) + 3
+							for k = 1, N do
+								local a = k / N * TAU + s * 0.4 + age * 0.6
+								local pos = target + V3(math.cos(a) * rr, H / 2 - 2, math.sin(a) * rr)
+								rg.cfs[k] = CFrame.new(pos) * CFrame.Angles(0, -a, 0)
+							end
+							workspace:BulkMoveTo(rg.parts, rg.cfs, Enum.BulkMoveMode.FireCFrameChanged)
+							rg.base.Size = V3(0.5, rr * 2, rr * 2)
+							rg.base.Transparency = 0.35 + 0.6 * p
+
+							-- what this colour does to NPCs / owned parts it passes over
+							for _, n in ipairs(npcList) do
+								if not hitN[s][n.model] and n.hum.Parent and n.hum.Health > 0 then
+									local d = flat(n.root.Position - target).Magnitude
+									if math.abs(d - rr) < 14 + R * 0.05 then
+										hitN[s][n.model] = true
+										hurt(n, DMG[s])
+										launch(n, vecFor(s, n.root.Position), s == 3 and 1.2 or 0.9)
+										local hl = make("Highlight", { FillColor = rg.col, OutlineColor = WHITE, FillTransparency = 0.45, DepthMode = Enum.HighlightDepthMode.AlwaysOnTop }, n.model)
+										Debris:AddItem(hl, 0.9)
+										if s == 3 then
+											for _ = 1, 3 do
+												local bp = n.root.Position + V3(rf(-5, 5), 0, rf(-5, 5))
+												local bolt = fxPart({ Color = WHITE, Size = V3(0.6, 90, 0.6), Position = bp + V3(0, 45, 0) })
+												tweenKill(bolt, 0.25, { Transparency = 1, Size = V3(0.1, 90, 0.1) })
+											end
+										end
+										burst(anchorPart(n.root.Position, 2), { "Stars" })
+									end
+								end
+							end
+							for _, r2 in ipairs(ownedList) do
+								if not hitO[s][r2] and r2.Parent and not r2.Anchored then
+									local d = flat(r2.Position - target).Magnitude
+									if math.abs(d - rr) < 14 + R * 0.05 then
+										hitO[s][r2] = true
+										kick(r2, vecFor(s, r2.Position), randomSpin(s == 6 and 40 or 10))
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+
+			-- the rainbow core erupts
+			sfx(SFX.gong, 1.5, anchorPart(target, 8), false, 0.8)
+			sfx(SFX.explosion, 1.5, anchorPart(target, 8), false, 0.9)
+			sfx(SFX.thunderHuge, 1.2, anchorPart(target, 8), false, 1)
+			flash(target, 1, m)
+			for i = 1, 7 do
+				local w = (46 - i * 5) * sq
+				local cyl = fxPart({
+					Shape = Enum.PartType.Cylinder, Color = RB.hue((i - 1) / 7, 0.8, 1), Transparency = 0.2 + i * 0.03,
+					Size = V3(900, 1, 1), CFrame = CFrame.new(target + V3(0, 450, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+				})
+				tw(cyl, 0.25, { Size = V3(900, w, w) }, ES.Back)
+				tweenKill(cyl, 0.9, { Transparency = 1 }, ES.Quad, ED.In, 1.4)
+				task.delay(0.25, function()
+					if cyl.Parent then tw(cyl, 0.65, { Transparency = 1 }, ES.Quad, ED.In) end
+				end)
+				shockwave(target, 70 * sq * (1 + i * 0.35), 0.8, i * 0.05, RB.hue((i - 1) / 7, 0.8, 1))
+			end
+			pillar(target, 14 * sq, WHITE, 0.1, 1)
+			scorch(target, 60 * sq, m)
+			cracks(target, 60 * sq, m, m.big and 36 or 24)
+			flingGround(target, 45 * sq, m.scale)
+			shake(1.2, 2.5 * sq)
+			fovPunch(10, 0.8)
+			skyOff(1.5)
+			for _, n in ipairs(npcsIn(target, 75 * sq)) do
+				hurtFrac(n, m.big and 0.45 or 0.32)
+				launch(n, flatDir(flat(n.root.Position - target)) * 120 + V3(0, 220, 0), 1.5)
+			end
+			physBlast(target, 75 * sq, m.scale)
+		end)
+		tele.destroy()
+		skyOff(1)
+		if not ok then warn("[IvoryPeriastron] rainbow nova: " .. tostring(err)) end
+	end)
+end
+
+-- F - RAINBOW ROAD: a seven-lane rainbow road paints itself out in front of you and you ride it at huge speed.
+-- NPCs and owned parts beside the road are thrown off it to both sides; the road fades behind you.
+SECOND.rainbow = function(ctx)
+	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
+	local sq = math.sqrt(m.scale)
+	local LEN = m.big and 900 or 380
+	local SPEED = 520
+	local WIDTH = 30 * sq
+	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 100)
+	local dir = flat(aim - root.Position)
+	dir = dir.Magnitude > 1 and dir.Unit or flatDir(flat(root.CFrame.LookVector))
+	local right = dir:Cross(Vector3.yAxis)
+	local params = rayParams(character)
+	local pos = root.Position
+
+	sfx(SFX.synthStart, 1.4, root, false, 1.2)
+	sfx(SFX.dash, 1.1, root, false, 1.1)
+	local tone = sfx(SFX.synthTone, 0.9, root, true, 1.4)
+	flash(pos, 0.5, m)
+	fovPunch(18, 0.6)
+
+	local seg = 16
+	local travelled, nextSeg = 0, 0
+	local cd = {}
+	local hue0 = 0
+	local lastOwned = 0
+	local startTime = os.clock()
+	while travelled < LEN and root.Parent and hum.Health > 0 do
+		local dt = RunService.Heartbeat:Wait()
+		local step = SPEED * dt
+		travelled += step
+		pos += dir * step
+		local gy = groundAt(pos, params).Y
+		local p = V3(pos.X, gy + 3, pos.Z)
+		root.CFrame = CFrame.lookAt(p, p + dir)
+		root.AssemblyLinearVelocity = V3(0, 0, 0)
+
+		-- paint road segments
+		while nextSeg < travelled do
+			local at = V3(pos.X, gy + 0.3, pos.Z) - dir * (travelled - nextSeg)
+			for lane = 1, 7 do
+				local off = (lane - 4) * (WIDTH / 7)
+				local strip = fxPart({
+					Color = RB.hue((lane - 1) / 7 + hue0, 0.85, 1), Transparency = 0.1,
+					Size = V3(WIDTH / 7 * 1.02, 0.5, seg * 1.15), CFrame = CFrame.lookAt(at + right * off, at + right * off + dir),
+				})
+				tweenKill(strip, 1.1, { Transparency = 1 }, ES.Quad, ED.In, 1.2)
+			end
+			nextSeg += seg
+			hue0 += 0.012
+		end
+
+		-- throw everything beside the road off it
+		for _, n in ipairs(npcsIn(p, WIDTH + 14)) do
+			if (cd[n.model] or 0) < os.clock() then
+				local off = n.root.Position - p
+				if math.abs(off:Dot(right)) < WIDTH * 0.8 + 6 then
+					cd[n.model] = os.clock() + 1.5
+					local side = off:Dot(right) >= 0 and right or -right
+					hurtFrac(n, m.big and 0.22 or 0.16)
+					launch(n, side * 190 + dir * 80 + V3(0, 150, 0), 1.3)
+					burst(anchorPart(n.root.Position, 2), { "Stars", "Rays_Thick" })
+				end
+			end
+		end
+		if os.clock() - lastOwned > 0.1 then
+			lastOwned = os.clock()
+			for _, r2 in ipairs(ownedRoots(p, WIDTH + 14)) do
+				local off = r2.Position - p
+				if math.abs(off:Dot(right)) < WIDTH * 0.8 + 6 then
+					local side = off:Dot(right) >= 0 and right or -right
+					kick(r2, side * 180 + dir * 60 + V3(0, 130, 0), randomSpin(16))
+				end
+			end
+		end
+	end
+
+	stopSfx(tone, 0.3)
+	sfx(SFX.explosion, 1.2, root, false, 1.2)
+	sfx(SFX.bling, 1, root, false, 1.2)
+	for i = 1, 7 do shockwave(pos - V3(0, 2.5, 0), 22 * sq * (1 + i * 0.4), 0.6, i * 0.04, RB.hue((i - 1) / 7, 0.85, 1)) end
+	burst(anchorPart(pos), { "Rays_Thick", "Stars", "Stardust" })
+	shake(0.5, 1.5 * sq)
+	root.AssemblyLinearVelocity = V3(0, 0, 0)
+end
+
+-- G - CHROMATIC ECLIPSE: the sky goes dark and a vast rainbow halo ignites over the target around a black eclipse.
+-- It rains seven-colour light spears that bounce NPCs and owned parts into the air, then a colossal layered rainbow
+-- beam drops through the centre of the halo.
+ULT.rainbow = function(ctx)
+	local m, root, character = ctx.m, ctx.root, ctx.character
+	local sq = math.sqrt(m.scale)
+	local target = groundTarget(ctx.aim, root, character)
+	local HC = 170 * sq
+	local HR = 120 * sq
+	local DUR = m.big and 7 or 5.5
+	local center = target + V3(0, HC, 0)
+
+	sfx(SFX.synthStart, 1.5, root, false, 0.8)
+	sfx(SFX.gong, 1.3, anchorPart(center, 8), false, 0.7)
+	skyOn(0.9, RB.hue(0.72, 0.6, 0.35), 1)
+	flash(center, 0.6, m)
+	shake(0.8, 1.2 * sq)
+
+	local halo = {}
+	for i = 1, 7 do
+		local d = disc(center, 2, 1.4 * sq, RB.hue((i - 1) / 7, 0.85, 1), 0.1)
+		tw(d, 1.2, { Size = V3(1.4 * sq, HR * 2 * (1 - (i - 1) * 0.1), HR * 2 * (1 - (i - 1) * 0.1)) }, ES.Back)
+		halo[i] = d
+		Debris:AddItem(d, DUR + 6)
+	end
+	local eclipse = disc(center + V3(0, -0.5, 0), 2, 2 * sq, Color3.new(0, 0, 0), 0, nil)
+	eclipse.Material = Enum.Material.SmoothPlastic
+	tw(eclipse, 1.2, { Size = V3(2 * sq, HR * 0.55, HR * 0.55) }, ES.Back)
+	Debris:AddItem(eclipse, DUR + 6)
+	local glow = ballPart(center, 2, WHITE, 0.6, { Material = Enum.Material.ForceField })
+	tw(glow, 1.2, { Size = Vector3.one * HR * 0.8 })
+	Debris:AddItem(glow, DUR + 6)
+	local hum1 = sfx(SFX.synthTone, 0.8, anchorPart(center, DUR + 8), true, 0.6)
+	task.wait(1.2)
+
+	local t0, acc = os.clock(), 0
+	local rate = m.big and 60 or 32
+	local count = 0
+	while os.clock() - t0 < DUR and root.Parent do
+		local dt = RunService.Heartbeat:Wait()
+		local t = os.clock() - t0
+		for i, d in ipairs(halo) do
+			d.Color = RB.hue((i - 1) / 7 + t * 0.35, 0.85, 1)
+			d.CFrame = CFrame.new(center) * CFrame.Angles(0, t * (i % 2 == 0 and 0.6 or -0.6), math.rad(90))
+		end
+		acc += rate * dt
+		while acc >= 1 do
+			acc -= 1
+			count += 1
+			local a, rr = rand() * TAU, HR * 1.05 * math.sqrt(rand())
+			local ground = target + V3(math.cos(a) * rr, 0, math.sin(a) * rr)
+			local col = RB.hue(rand(), 0.8, 1)
+			local sp = fxPart({ Color = col, Size = V3(1.6 * sq, 70 * sq, 1.6 * sq), Position = ground + V3(0, HC, 0) })
+			local core = fxPart({ Color = WHITE, Size = V3(0.6 * sq, 72 * sq, 0.6 * sq), Position = ground + V3(0, HC, 0) })
+			tw(sp, 0.32, { Position = ground + V3(0, 35 * sq, 0) }, ES.Quad, ED.In)
+			tw(core, 0.32, { Position = ground + V3(0, 35 * sq, 0) }, ES.Quad, ED.In)
+			Debris:AddItem(sp, 0.9)
+			Debris:AddItem(core, 0.9)
+			local my = count
+			task.delay(0.32, function()
+				tweenKill(sp, 0.25, { Transparency = 1 })
+				tweenKill(core, 0.25, { Transparency = 1 })
+				shockwave(ground + V3(0, 0.3, 0), 12 * sq, 0.4, 0, col)
+				if my % 5 == 0 then sfx(SFX.psionic, 0.4, anchorPart(ground, 3), false, rf(1.0, 1.5)) end
+				if my % 9 == 0 then sfx(SFX.bling, 0.5, anchorPart(ground, 3), false, rf(0.8, 1.6)) end
+				for _, n in ipairs(npcsIn(ground, 11 * sq)) do
+					hurt(n, m.big and 5 or 4)
+					launch(n, V3(rf(-30, 30), 80, rf(-30, 30)), 0.6)
+				end
+				for _, r2 in ipairs(ownedRoots(ground, 12 * sq)) do kick(r2, V3(rf(-30, 30), 110, rf(-30, 30)), randomSpin(14)) end
+			end)
+		end
+	end
+
+	-- the beam
+	stopSfx(hum1, 0.4)
+	sfx(SFX.explosion, 1.6, anchorPart(target, 8), false, 0.8)
+	sfx(SFX.gong, 1.5, anchorPart(target, 8), false, 0.6)
+	sfx(SFX.thunderHuge, 1.4, anchorPart(target, 8), false, 0.9)
+	flash(target, 1, m)
+	for i = 1, 7 do
+		local w = (90 - i * 10) * sq
+		local cyl = fxPart({
+			Shape = Enum.PartType.Cylinder, Color = RB.hue((i - 1) / 7, 0.8, 1), Transparency = 0.15 + i * 0.03,
+			Size = V3(HC, 1, 1), CFrame = CFrame.new(target + V3(0, HC / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		})
+		tw(cyl, 0.25, { Size = V3(HC, w, w) }, ES.Back)
+		task.delay(0.9, function() if cyl.Parent then tw(cyl, 0.6, { Transparency = 1 }) end end)
+		Debris:AddItem(cyl, 2)
+		shockwave(target, 80 * sq * (1 + i * 0.3), 0.9, i * 0.05, RB.hue((i - 1) / 7, 0.85, 1))
+	end
+	pillar(target, 20 * sq, WHITE, 0.1, 1.2)
+	scorch(target, 80 * sq, m)
+	cracks(target, 80 * sq, m, m.big and 40 or 28)
+	flingGround(target, 60 * sq, m.scale)
+	shake(1.5, 3 * sq)
+	fovPunch(12, 1)
+	for _, n in ipairs(npcsIn(target, 85 * sq)) do
+		hurtFrac(n, m.big and 0.6 or 0.45)
+		launch(n, flatDir(flat(n.root.Position - target)) * 150 + V3(0, 240, 0), 1.6)
+	end
+	physBlast(target, 85 * sq, m.scale * 1.2)
+	for _, d in ipairs(halo) do tweenKill(d, 0.6, { Transparency = 1 }) end
+	tweenKill(eclipse, 0.6, { Transparency = 1 })
+	tweenKill(glow, 0.6, { Transparency = 1 })
+	task.wait(0.8)
+	skyOff(1.5)
+end
+
 local function useUlt()
 	if ulting or os.clock() - lastUlt < ultCooldown() then return end
 	local character, hum, root = liveChar()
@@ -4186,25 +4591,22 @@ local function useUlt()
 	lastUlt = os.clock()
 end
 
----------------------------------------------------------------- simulation radius
-local SIM_STEPS = { 50, 500, 1000, 5000, 10000 }
-local simIdx = 0
-local function applySim()
-	if simIdx == 0 then return end
-	local v = SIM_STEPS[simIdx]
-	if sethiddenproperty then
-		pcall(sethiddenproperty, player, "SimulationRadius", v)
-		pcall(sethiddenproperty, player, "MaximumSimulationRadius", v)
-	else
-		pcall(function() player.SimulationRadius = v end)
-		pcall(function() player.MaximumSimulationRadius = v end)
+---------------------------------------------------------------- simulation radius (applied constantly from execute)
+local SIM_RADIUS = 1000
+local simAlive = true
+table.insert(connections, { Disconnect = function() simAlive = false end })
+task.spawn(function()
+	while simAlive do
+		if sethiddenproperty then
+			pcall(sethiddenproperty, player, "SimulationRadius", SIM_RADIUS)
+			pcall(sethiddenproperty, player, "MaximumSimulationRadius", SIM_RADIUS)
+		else
+			pcall(function() player.SimulationRadius = SIM_RADIUS end)
+			pcall(function() player.MaximumSimulationRadius = SIM_RADIUS end)
+		end
+		task.wait(1)
 	end
-end
-local function cycleSim()
-	simIdx = simIdx % #SIM_STEPS + 1
-	applySim()
-	showToast("Simulation radius: " .. SIM_STEPS[simIdx], WHITE)
-end
+end)
 
 ---------------------------------------------------------------- mode / style switching
 local function refreshMode(label)
@@ -4258,7 +4660,6 @@ local BUTTONS = {
 	{ act = ACT.theme,  key = Enum.KeyCode.B, fn = cycleStyle,        ang = 166, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 5 },
 	{ act = ACT.mode,   key = Enum.KeyCode.C, fn = toggleDestructive, above = 5,                                    col = 5, row = 1 },
 	{ act = ACT.third,  key = Enum.KeyCode.G, fn = useUlt,            ang = 137, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 6 },
-	{ act = ACT.sim,    key = Enum.KeyCode.T, fn = cycleSim,          above = 6,                                    col = 5, row = 2 },
 }
 
 local function setLabel(i, text)
@@ -4317,7 +4718,7 @@ local function placeTouchButtons()
 		end
 	end)
 	if not ok then
-		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 }, { 0.3, 0.16 } }
+		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 } }
 		for i, b in ipairs(BUTTONS) do
 			CAS:SetPosition(b.act, UDim2.new(fallback[i][1], 0, fallback[i][2], 0))
 		end
@@ -4353,7 +4754,6 @@ local function showButtons()
 		local left = total - (os.clock() - last)
 		return left > 0 and tostring(math.ceil(left)) or ready
 	end
-	local simTick = 0
 	task.spawn(function()
 		while uiToken == my do
 			local m = mode()
@@ -4365,9 +4765,6 @@ local function showButtons()
 			setLabel(5, st.short)
 			setLabel(6, bigMode and "Destructive: ON" or "Destructive: OFF")
 			setLabel(7, cd(lastUlt, ultCooldown(), st.u))
-			setLabel(8, simIdx == 0 and "Sim Radius" or ("Sim: " .. SIM_STEPS[simIdx]))
-			simTick += 1
-			if simTick % 10 == 0 then applySim() end
 			task.wait(0.1)
 		end
 	end)
@@ -4440,4 +4837,4 @@ task.spawn(function()
 	notify("Join Discord server for more", "discord.gg/empgqd5qpq", nil, 9)
 end)
 
-print("Rip-off Rainbow Pariastron OMEGA v6 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability.")
+print("Rip-off Rainbow Pariastron OMEGA v7 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability  [G] third ability.")
