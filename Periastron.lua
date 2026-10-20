@@ -4258,7 +4258,7 @@ local BUTTONS = {
 	{ act = ACT.theme,  key = Enum.KeyCode.B, fn = cycleStyle,        ang = 166, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 5 },
 	{ act = ACT.mode,   key = Enum.KeyCode.C, fn = toggleDestructive, above = 5,                                    col = 5, row = 1 },
 	{ act = ACT.third,  key = Enum.KeyCode.G, fn = useUlt,            ang = 137, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 6 },
-	{ act = ACT.sim,    key = Enum.KeyCode.T, fn = cycleSim,          above = 4,                                    col = 4, row = 1 },
+	{ act = ACT.sim,    key = Enum.KeyCode.T, fn = cycleSim,          above = 6,                                    col = 5, row = 2 },
 }
 
 local function setLabel(i, text)
@@ -4309,6 +4309,7 @@ local function placeTouchButtons()
 			local btn = CAS:GetButton(b.act)
 			local center = centers[i]
 			if b.above then center = centers[b.above] - Vector2.new(0, btn.AbsoluteSize.Y * 1.15) end
+			centers[i] = center
 			btn.Position = UDim2.fromOffset(
 				center.X - frame.AbsolutePosition.X - btn.AbsoluteSize.X / 2,
 				center.Y - frame.AbsolutePosition.Y - btn.AbsoluteSize.Y / 2
@@ -4316,7 +4317,7 @@ local function placeTouchButtons()
 		end
 	end)
 	if not ok then
-		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 }, { 0.8, 0.3 } }
+		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 }, { 0.3, 0.16 } }
 		for i, b in ipairs(BUTTONS) do
 			CAS:SetPosition(b.act, UDim2.new(fallback[i][1], 0, fallback[i][2], 0))
 		end
@@ -4414,5 +4415,29 @@ table.insert(connections, player.CharacterAdded:Connect(function()
 	task.wait(0.6)
 	give()
 end))
+
+-- three Roblox core notifications on execute; the first one shows DuaKNo's avatar for everyone
+task.spawn(function()
+	local StarterGui = game:GetService("StarterGui")
+	local function notify(title, text, icon, dur)
+		for _ = 1, 20 do
+			local ok = pcall(function()
+				StarterGui:SetCore("SendNotification", { Title = title, Text = text, Icon = icon, Duration = dur })
+			end)
+			if ok then return end
+			task.wait(0.5)
+		end
+	end
+	local icon
+	pcall(function()
+		local id = Players:GetUserIdFromNameAsync("DuaKNo")
+		icon = Players:GetUserThumbnailAsync(id, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	end)
+	notify("Rip-off Rainbow Periastron OMEGA", "By DuaKNo", icon, 7)
+	task.wait(1.2)
+	notify("Follow on Instagram", "me_duakno", nil, 7)
+	task.wait(1.2)
+	notify("Join Discord server for more", "discord.gg/empgqd5qpq", nil, 9)
+end)
 
 print("Rip-off Rainbow Pariastron OMEGA v6 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability.")
