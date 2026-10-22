@@ -1,5 +1,5 @@
 --[[
-	Rip-off Rainbow Pariastron OMEGA v7 - CLIENT-SIDE
+	Rip-off Rainbow Pariastron OMEGA v9 - CLIENT-SIDE
 	Execute once. Gives "Rip-off Rainbow Pariastron OMEGA" to your Backpack (re-given every respawn).
 	Equip it and the buttons appear. Click / tap the screen = swing the sword (swing animation + small slash).
 
@@ -7,20 +7,20 @@
 	  [Angel's Past] (X)  1st press: leave a statue / 2nd press: teleport back + shockwave, 80% -> 30% of NPC max health by distance
 	  [Lunge]        (V)  dash forward, cutting through NPCs on the way
 	  [Second]       (F)  the style's second ability
-	  [Third]        (G)  the style's third ability: Shadow Tendrils / Seraph Wings / Chrono Rupture / Gamma Cyclone / Crystal Prism / Blood Moon / Midas Shatter
+	  [Third]        (G)  the style's third ability: Shadow Tendrils / Angelic Pinwheel / Chrono Rupture / Spore Garden / Crystal Prism / Blood Moon / Midas Shatter / Chroma Serpent
 	  SimulationRadius is set to 1000 automatically (and kept there) when you execute (needs sethiddenproperty).
 	  [Style]        (B)  cycles the Periastron: Noir Psi > Ivory > Azure Alpha > Chartreuse Gamma > Amethyst Kappa > Crimson Mu > Grimgold Beta
 	  [Destructive]  (C)  right above the Style button: bigger, faster, deadlier version of whichever style is picked
 
 	  Style             Nova (Z)            Second (F)
 	  Noir Psi          Black Hole          Lights Out
-	  Ivory             Heaven's Ascension  Judgement
+	  Ivory             Toll of Heaven      Lance of Dawn
 	  Azure Alpha       Phantom Slash       Sword Prison
-	  Chartreuse Gamma  Green Forcefield    Green Laser
+	  Chartreuse Gamma  Gamma Mutation      Gamma Smash
 	  Amethyst Kappa    Amethyst Comet      Meteoroids
 	  Crimson Mu        Crimson Pillars     Crescent Wave
 	  Grimgold Beta     Sonar               Echo Strike
-	  Rainbow           Spectrum Cascade    Rainbow Road        (strongest style, unique abilities)
+	  Rainbow           Chroma Tentacles    Prism Ricochet      (strongest style, unique abilities)
 
 	NPC DAMAGE: every ability hurts NPCs (any Humanoid model that is not a player). Damage = % of the NPC's max health per hit (kept low so abilities don't one-shot; Noir destructive is the exception). EXECUTE: any attack on an NPC at or under 10% health kills it instantly.
 	Noir Black Hole: NPCs + owned parts are dragged up into an End-portal style void, then it explodes: 100% (center) -> 10% (edge) of max health,
@@ -31,6 +31,7 @@
 	Sounds: charge-ups, dash, black hole and crimson laser use the Roblox audio IDs in the SFX table.
 	Run again to replace the old copy.
 ]]
+local __ivOk, __ivErr = pcall(function()
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -48,6 +49,7 @@ local STATUE_NAME = "Angel's Past"
 local ACT = {
 	nova = "IvoryNova", statue = "IvoryStatue", mode = "IvoryMode",
 	step = "IvoryStep", theme = "IvoryTheme", judge = "IvoryJudge", third = "IvoryThird",
+		fourth = "IvoryFourth", song = "IvorySong", music = "IvoryMusic",
 }
 
 local TAU = math.pi * 2
@@ -56,7 +58,6 @@ local ES, ED = Enum.EasingStyle, Enum.EasingDirection
 local NEON = Enum.Material.Neon
 local V3 = Vector3.new
 
----------------------------------------------------------------- cleanup of old run
 local connections, ownedInstances = {}, {}
 
 local function cleanup()
@@ -80,7 +81,6 @@ if getgenv then
 end
 cleanup()
 
----------------------------------------------------------------- config
 local CHARGE_TIME = 1.5
 local RANGE_NORMAL = 1000 -- aim / scan range, normal mode
 local RANGE_BIG = 3000 -- aim / scan range, destructive mode
@@ -104,18 +104,16 @@ local TOUCH_BUTTON_DISTANCE = 2.7 -- x jump-button size
 local WHITE = Color3.new(1, 1, 1)
 local GOLD = Color3.fromHex("FFD700")
 
----------------------------------------------------------------- styles (the 7 Periastrons) / palettes
--- pal = { bright, mid-tone, base }
 local function hex(h) return Color3.fromHex(h) end
 
 local STYLES = {
 	{ id = "noir", name = "Noir Periastron Psi", short = "Noir Psi", q = "Black Hole", e = "Lights Out", u = "Shadow Tendrils", step = "Shadow Lunge",
 		dark = true, pal = { hex("B4B4C8"), hex("55556A"), hex("08080C") }, glow = hex("9A9AB8") },
-	{ id = "ivory", name = "Ivory Periastron", short = "Ivory", q = "Heaven's Ascension", e = "Judgement", u = "Seraph Wings", step = "Halo Step",
+	{ id = "ivory", name = "Ivory Periastron", short = "Ivory", q = "Toll of Heaven", e = "Lance of Dawn", u = "Angelic Pinwheel", step = "Halo Step",
 		pal = { hex("87CEEB"), hex("6495ED"), WHITE }, glow = hex("EAFBFF"), accent = GOLD, flash = WHITE },
 	{ id = "azure", name = "Azure Periastron Alpha", short = "Azure Alpha", q = "Phantom Slash", e = "Sword Prison", u = "Chrono Rupture", step = "Azure Lunge",
 		pal = { hex("8FD8FF"), hex("2F7BFF"), hex("0A2C8C") }, glow = hex("A5E4FF") },
-	{ id = "chartreuse", name = "Chartreuse Periastron Gamma", short = "Chartreuse Gamma", q = "Green Forcefield", e = "Green Laser", u = "Gamma Cyclone", step = "Green Lunge",
+	{ id = "chartreuse", name = "Chartreuse Periastron Gamma", short = "Chartreuse Gamma", q = "Gamma Mutation", e = "Gamma Smash", u = "Spore Garden", step = "Green Lunge",
 		pal = { hex("CCFF66"), hex("5BD63B"), hex("0B6B22") }, glow = hex("DFFF8F") },
 	{ id = "amethyst", name = "Amethyst Periastron Kappa", short = "Amethyst Kappa", q = "Amethyst Comet", e = "Meteoroids", u = "Crystal Prism", step = "Amethyst Dash",
 		pal = { hex("E0B0FF"), hex("9B4DFF"), hex("3B0B7C") }, glow = hex("E8C0FF") },
@@ -123,11 +121,10 @@ local STYLES = {
 		pal = { hex("FF8080"), hex("E0132D"), hex("640010") }, glow = hex("FF5050") },
 	{ id = "grimgold", name = "Grimgold Periastron Beta", short = "Grimgold Beta", q = "Sonar", e = "Echo Strike", u = "Midas Shatter", step = "Gold Lunge",
 		pal = { hex("FFE070"), hex("FF9A1F"), hex("8A4A00") }, glow = hex("FFB62E") },
-	{ id = "rainbow", name = "Rainbow Periastron", short = "Rainbow", q = "Spectrum Cascade", e = "Rainbow Road", u = "Chromatic Eclipse", step = "Prism Step",
+	{ id = "rainbow", name = "Rainbow Periastron", short = "Rainbow", q = "Chroma Tentacles", e = "Prism Ricochet", u = "Prismatic Dimension", v = "Periastron Legion", step = "Prism Step",
 		pal = { hex("FFC8F4"), hex("8A63FF"), hex("00C8FF") }, glow = WHITE, flash = WHITE },
 }
 
--- two modes per style: normal (x1) and destructive (x5.4)
 local MODES = {}
 for i, st in ipairs(STYLES) do
 	for d = 1, 2 do
@@ -154,7 +151,6 @@ local styleIdx, bigMode = 2, false -- starts on Ivory
 local function maxRange() return bigMode and RANGE_BIG or RANGE_NORMAL end
 local function mode() return MODES[(styleIdx - 1) * 2 + (bigMode and 2 or 1)] end
 
----------------------------------------------------------------- helpers
 local function make(class, props, parent)
 	local inst = Instance.new(class)
 	for k, v in pairs(props) do inst[k] = v end
@@ -196,7 +192,6 @@ local function colorSeq(pal, i)
 	})
 end
 
--- palette pick; Heaven drops its rare gold accent into every 7th piece
 local function pick(m, i)
 	if m.accent and i % 7 == 0 then return m.accent end
 	return m.pal[i % 3 + 1]
@@ -230,7 +225,6 @@ local function shockwave(pos, radius, duration, delay, color)
 	if delay and delay > 0 then task.delay(delay, go) else go() end
 end
 
----------------------------------------------------------------- particle templates (rebuilt per mode)
 local fxFolder = Instance.new("Folder")
 fxFolder.Name = "StarParticles"
 table.insert(ownedInstances, fxFolder)
@@ -284,10 +278,9 @@ local function burst(parent, names)
 	end
 end
 
----------------------------------------------------------------- tool template (YOUR sword - unchanged look)
 local template = Instance.new("Tool")
 template.Name = TOOL_NAME
-template.ToolTip = "Click = swing  |  Nova [Z]  |  Angel's Past [X]  |  Destructive [C]  |  Lunge [V]  |  Style [B]  |  Second ability [F]  |  Third ability [G]"
+template.ToolTip = "Click = swing  |  Nova [Z]  |  Angel's Past [X]  |  Destructive [C]  |  Lunge [V]  |  Style [B]  |  Second ability [F]  |  Third ability [G]  |  Legion [H] (Rainbow)  |  Next song [N]  |  Music on/off [M]"
 template.TextureId = "rbxassetid://157345185" -- inventory icon (the sword texture)
 template.CanBeDropped = false
 template.RequiresHandle = true
@@ -304,7 +297,6 @@ make("SpecialMesh", {
 	TextureId = "rbxassetid://157345185", Scale = Vector3.one,
 }, handle)
 
--- blade runs along the handle's Z axis; swap the sign of these if the tip is on the other end
 local topTrail = make("Attachment", { Name = "TopTrail", Position = V3(0, 0, -3) }, handle)
 local bottomTrail = make("Attachment", { Name = "BottomTrail", Position = V3(0, 0, 0.5) }, handle)
 make("Attachment", { Name = "ChargeAttachment", Position = V3(0, 0, -3) }, handle)
@@ -348,7 +340,6 @@ local function applyModeToTool(tool)
 	if light then light.Color = m.glow end
 end
 
----------------------------------------------------------------- screen gui + screen effects
 local okHui, hui = pcall(function() return gethui and gethui() end)
 local guiParent = (okHui and hui) or player:WaitForChild("PlayerGui")
 
@@ -367,7 +358,7 @@ local toast = make("TextLabel", {
 
 local toastToken = 0
 local function showToast(text, color)
-	toastToken += 1
+	toastToken = toastToken + (1)
 	local my = toastToken
 	toast.Text = text
 	toast.TextColor3 = color
@@ -379,7 +370,6 @@ local function showToast(text, color)
 	end)
 end
 
--- lighting effects are created ONCE and re-used (disabled when idle) instead of spawned per flash
 local cc = make("ColorCorrectionEffect", { Enabled = false }, Lighting)
 local bloom = make("BloomEffect", { Enabled = false, Intensity = 0, Size = 40, Threshold = 0.7 }, Lighting)
 local blur = make("BlurEffect", { Enabled = false, Size = 0 }, Lighting)
@@ -387,13 +377,12 @@ table.insert(ownedInstances, cc)
 table.insert(ownedInstances, bloom)
 table.insert(ownedInstances, blur)
 
--- sky darkening (Amethyst comet / meteoroids, Noir black hole + Lights Out): tweens the lighting down and back
 local skyCC = make("ColorCorrectionEffect", { Enabled = false }, Lighting)
 table.insert(ownedInstances, skyCC)
 local skyBase, skyToken = nil, 0
 
 local function skyOn(strength, tint, dur)
-	skyToken += 1
+	skyToken = skyToken + (1)
 	if not skyBase then
 		skyBase = {
 			ClockTime = Lighting.ClockTime, Brightness = Lighting.Brightness,
@@ -425,7 +414,6 @@ local function skyOff(dur)
 	end)
 end
 
--- if the script is re-run mid-effect, put the lighting back
 table.insert(connections, { Disconnect = function()
 	if skyBase then
 		for k, v in pairs(skyBase) do pcall(function() Lighting[k] = v end) end
@@ -445,7 +433,7 @@ local function flash(position, scale, m)
 	m = m or mode()
 	local strength = strengthAt(position, m) * (scale or 1)
 	if strength <= 0 then return end
-	flashToken += 1
+	flashToken = flashToken + (1)
 	local my = flashToken
 
 	flashFrame.BackgroundColor3 = m.flash
@@ -497,8 +485,6 @@ local function shake(duration, magnitude)
 	end)
 end
 
----------------------------------------------------------------- flung ground chunks (client-only, untouchable)
--- Chunks are anchored + non-collidable and moved by ONE ballistic step per frame, written with a single BulkMoveTo.
 local debrisFolder = make("Folder", { Name = "IvoryDebris" }, workspace)
 table.insert(ownedInstances, debrisFolder)
 local flung, flingConn = {}, nil
@@ -517,7 +503,7 @@ local function flingStep()
 		else
 			local el = now - it.t0
 			if el < it.tl then
-				n += 1
+				n = n + (1)
 				bulkP[n] = p
 				bulkC[n] = CFrame.new(it.p0 + it.v * el + V3(0, -0.5 * GRAVITY * el * el, 0))
 					* CFrame.Angles(it.spin.X * el, it.spin.Y * el, it.spin.Z * el) * it.rot
@@ -545,7 +531,6 @@ local function flingStep()
 	end
 end
 
--- part must already be parented to debrisFolder
 local function flingPart(p, vel, spin, life)
 	table.insert(flung, {
 		part = p, p0 = p.Position, rot = p.CFrame - p.Position,
@@ -565,7 +550,6 @@ local function rayParams(...)
 	return params
 end
 
--- rips chunks out of the real ground (same color + material) and flings them away
 local function flingGround(position, R, s)
 	local sc = math.sqrt(s)
 	local params = rayParams(player.Character)
@@ -591,7 +575,6 @@ local function flingGround(position, R, s)
 	end
 end
 
----------------------------------------------------------------- shared world effects
 local function pillar(position, diam, color, trans, dur)
 	local p = fxPart({
 		Shape = Enum.PartType.Cylinder, Color = color, Transparency = trans,
@@ -620,9 +603,6 @@ local function cracks(position, R, m, n)
 	end
 end
 
----------------------------------------------------------------- MAGIC CIRCLE (the telegraph that shows before the Nova lands)
--- One flat invisible part carries a SurfaceGui. The rings / ticks / octagram are UI frames, so the whole
--- circle is a handful of instances. Rotation speeds up while charging and goes white-hot when it locks on.
 local function magicCircle(pos, R, m, dur)
 	local sq = math.sqrt(m.scale)
 	local c1 = m.dark and m.glow or m.pal[1]
@@ -662,11 +642,9 @@ local function magicCircle(pos, R, m, dur)
 	}, gui)
 	tw(root, 0.45, { Size = UDim2.fromScale(1, 1) }, ES.Back)
 
-	-- outer double ring
 	local outerStroke = stroke(frame(root, 1), th(1.1), c1, 0.05, true)
 	stroke(frame(root, 0.965), th(0.35), c2, 0.35, true)
 
-	-- tick ring (every 6th tick is long + accent colored)
 	local tickRing = frame(root, 0.9)
 	for i = 1, 36 do
 		local long = i % 6 == 1
@@ -678,7 +656,6 @@ local function magicCircle(pos, R, m, dur)
 		}, holder)
 	end
 
-	-- mid ring with 4 diamond nodes
 	local midRing = frame(root, 0.78)
 	stroke(midRing, th(0.4), c2, 0.15, true)
 	for i = 0, 3 do
@@ -690,18 +667,15 @@ local function magicCircle(pos, R, m, dur)
 		}, holder)
 	end
 
-	-- counter-rotating octagram (two squares)
 	local star1 = frame(root, 0.54, 0)
 	stroke(star1, th(0.35), c1, 0.1)
 	local star2 = frame(root, 0.54, 45)
 	stroke(star2, th(0.35), c3, 0.1)
 
-	-- inner rings + center diamond
 	local innerStroke = stroke(frame(root, 0.34), th(0.5), c1, 0.1, true)
 	stroke(frame(root, 0.2), th(0.3), c3, 0.2, true)
 	stroke(frame(root, 0.07, 45), th(0.6), c3, 0)
 
-	-- radar sweep
 	local sweep = frame(root, 1)
 	local line = make("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 0.5),
@@ -712,7 +686,6 @@ local function magicCircle(pos, R, m, dur)
 		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) }),
 	}, line)
 
-	-- targeting column of light rising from the center
 	local d = 1.2 * sq
 	local column = disc(pos + V3(0, 0.1, 0), d, 0.1, c3, 0.35)
 	column.CFrame = CFrame.new(pos + V3(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
@@ -720,7 +693,6 @@ local function magicCircle(pos, R, m, dur)
 	tw(column, dur, { Size = V3(160, d, d), CFrame = CFrame.new(pos + V3(0, 80, 0)) * CFrame.Angles(0, 0, math.rad(90)) }, ES.Quad, ED.In)
 	Debris:AddItem(column, dur + 8)
 
-	-- geyser of sparks up the column
 	local sparks = make("ParticleEmitter", {
 		Color = colorSeq(m.pal, 1), LightEmission = m.dark and 0.5 or 1, Rate = 34 * sq,
 		Lifetime = NumberRange.new(0.8, 1.4), Speed = NumberRange.new(18 * sq, 40 * sq),
@@ -734,10 +706,10 @@ local function magicCircle(pos, R, m, dur)
 		local t = os.clock() - t0
 		local k = math.min(t / dur, 1)
 		local boost = locked and 4 or (1 + k * 2)
-		aT += dt * 40 * boost
-		aM += dt * 55 * boost
-		aS += dt * 70 * boost
-		aW += dt * 180 * boost
+		aT = aT + (dt * 40 * boost)
+		aM = aM + (dt * 55 * boost)
+		aS = aS + (dt * 70 * boost)
+		aW = aW + (dt * 180 * boost)
 		tickRing.Rotation = aT
 		midRing.Rotation = -aM
 		star1.Rotation = aS
@@ -768,7 +740,6 @@ local function magicCircle(pos, R, m, dur)
 	return circle
 end
 
----------------------------------------------------------------- Supernova impact
 local function explode(position, m)
 	local s, pal = m.scale, m.pal
 	local big, dark = s > 1, m.dark
@@ -778,19 +749,16 @@ local function explode(position, m)
 
 	burst(anchorPart(position))
 
-	-- big light flash on the ground
 	local lt = make("PointLight", {
 		Color = m.glow, Brightness = dark and 12 or 25, Range = math.min(R * 2, 60), Shadows = false,
 	}, anchorPart(position + V3(0, 4, 0), 0.9 + HOLD + FADE + 0.5))
 	tw(lt, 0.9 + HOLD + FADE, { Brightness = 0 }, ES.Sine, ED.InOut)
 
-	-- layered fireballs (one per palette color)
 	for i = 1, 3 do
 		local ball = ballPart(position, 2, pal[i], 0.1)
 		tweenKill(ball, 0.6 + i * 0.15, { Size = Vector3.one * R * (1.9 - i * 0.35), Transparency = 1 }, nil, nil, 1.2)
 	end
 
-	-- void modes: a black core that swells then collapses
 	if dark then
 		local void = ballPart(position + V3(0, R * 0.15, 0), 2, pal[3], 0, { Material = Enum.Material.SmoothPlastic })
 		tw(void, 0.45, { Size = Vector3.one * R * 1.1 }).Completed:Connect(function()
@@ -799,7 +767,6 @@ local function explode(position, m)
 		Debris:AddItem(void, 1.3)
 	end
 
-	-- the explosion bubble: swells, HOLDS for ~3s with lightning arcing inside, then slowly fades
 	local bubbleR = R * 1.15
 	local bubbles = {}
 	local function bubble(material, color, transparency, finalSize)
@@ -823,7 +790,6 @@ local function explode(position, m)
 		end
 	end)
 
-	-- lightning crawling around inside the bubble while it holds
 	local arcAnchor = anchorPart(position + V3(0, bubbleR * 0.2, 0), HOLD + FADE + 1.5)
 	local arcs = {}
 	for i = 1, (big and 14 or 9) do
@@ -854,7 +820,6 @@ local function explode(position, m)
 		for _, arc in ipairs(arcs) do arc[3].Enabled = false end
 	end)
 
-	-- crown of light: Heaven = a halo that rises and widens, Void = a ring sucked inward
 	local crown = big and 56 or 36
 	for i = 1, crown do
 		local ang = i / crown * TAU
@@ -875,13 +840,11 @@ local function explode(position, m)
 		tweenKill(piece, 2.8, { CFrame = CFrame.lookAt(p1, p1 + tangent), Transparency = 1 }, ES.Sine, ED.InOut, 3)
 	end
 
-	-- ground shockwaves
 	local rings = big and 6 or 4
 	for i = 1, rings do
 		shockwave(position, R * (1.6 - (i - 1) * (1.1 / rings)), 0.7 + i * 0.05, (i - 1) * 0.1, pal[(i - 1) % 3 + 1])
 	end
 
-	-- pillars of light
 	pillar(position, 18 * s, pal[1], 0.3, 1.5)
 	pillar(position, 13 * s, m.mid, 0.35, 1.3)
 	pillar(position, 8 * s, dark and m.mid or WHITE, 0.1, 1.1)
@@ -889,7 +852,6 @@ local function explode(position, m)
 	scorch(position, R, m)
 	cracks(position, R, m, big and 30 or 18)
 
-	-- spears of light shooting outward
 	local thick = 0.5 * sq
 	for i = 1, (big and 30 or 16) do
 		local start = CFrame.new(position + V3(0, 1.5, 0)) * CFrame.Angles(0, (i / (big and 30 or 16)) * TAU, 0)
@@ -898,7 +860,6 @@ local function explode(position, m)
 		tweenKill(sp, rf(0.9, 1.3), { CFrame = start * CFrame.new(0, 0, -R * rf(0.9, 1.7)), Transparency = 1 }, nil, nil, 1.5)
 	end
 
-	-- glowing shards + chunks of the REAL ground flung away (all untouchable)
 	for i = 1, (big and 70 or SHARD_COUNT) do
 		local size = rf(0.3, 0.7) * sq
 		local shard = fxPart({
@@ -913,7 +874,6 @@ local function explode(position, m)
 	shake(0.9, 2 * sq)
 	fovPunch(8 * sq, 0.7)
 
-	-- destructive modes get a second blast
 	if big then
 		task.delay(0.55, function()
 			burst(anchorPart(position), { "Supernova", "Rays_Thick", "Stars" })
@@ -926,7 +886,6 @@ local function explode(position, m)
 	end
 end
 
----------------------------------------------------------------- aiming
 local function aimPoint()
 	local camera = workspace.CurrentCamera
 	local char = player.Character
@@ -951,10 +910,8 @@ local function liveChar()
 	if hum and hum.Health > 0 and root then return character, hum, root end
 end
 
----------------------------------------------------------------- Heaven's meteor (only the Heaven style calls one down)
 local function meteorFlight(targetPos, root, m, sizeMul)
 	local s, pal, dark = m.scale, m.pal, m.dark
-	-- the meteor: starts VERY far away, flies a curved path, accelerates into the target
 	local k = (s ^ 0.6) * (sizeMul or 1)
 	local up = Vector3.yAxis
 	local flatDir = V3(targetPos.X - root.Position.X, 0, targetPos.Z - root.Position.Z)
@@ -971,7 +928,6 @@ local function meteorFlight(targetPos, root, m, sizeMul)
 	local starCore = ballPart(P0, 8 * k, dark and pal[3] or WHITE, 0)
 	local shell1 = ballPart(P0, 13 * k, pal[1], 0.45)
 	local shell2 = ballPart(P0, 18 * k, m.mid, 0.75)
-	-- the three balls swell 40% on the way in (one tween each instead of a per-frame resize)
 	for _, b in ipairs({ starCore, shell1, shell2 }) do
 		tw(b, METEOR_TIME, { Size = b.Size * 1.4 }, ES.Quad, ED.In)
 	end
@@ -1009,7 +965,6 @@ local function meteorFlight(targetPos, root, m, sizeMul)
 		flightCFs[1], flightCFs[2], flightCFs[3] = cf, cf, cf
 		if vel.Magnitude > 0.01 then
 			local look = CFrame.lookAt(pos, pos + vel)
-			-- the tail is a rigid straight beam pointing straight back along the flight direction
 			flightCFs[4] = look * CFrame.new(0, 0, tailLen / 2) * rot90
 			flightCFs[5] = look * CFrame.new(0, 0, tailLen * 0.35) * rot90
 		end
@@ -1021,7 +976,6 @@ local function meteorFlight(targetPos, root, m, sizeMul)
 	for _, p in ipairs(flight) do p:Destroy() end
 end
 
----------------------------------------------------------------- SOUNDS
 local SFX = {
 	charge = 115377603904778,      -- Rainbow Periastron laser: big charge-ups
 	smallCharge = 1844684832,      -- Headline News: short charge-ups
@@ -1054,7 +1008,6 @@ local SFX = {
 	synthTone = 9112884584,        -- Synth Tone (ProSoundEffects): rainbow hum / rush
 }
 
--- preload every sound once so the FIRST use is not delayed while the asset downloads
 task.spawn(function()
 	local list = {}
 	for _, id in pairs(SFX) do
@@ -1066,8 +1019,6 @@ task.spawn(function()
 	for _, s in ipairs(list) do s:Destroy() end
 end)
 
--- plays a sound. parent = a part/attachment for 3D sound, or nil for a flat (screen) sound.
--- returns the Sound; call stopSfx(sound) to fade it out early.
 local function sfx(id, volume, parent, looped, speed)
 	local s = Instance.new("Sound")
 	s.SoundId = "rbxassetid://" .. id
@@ -1089,10 +1040,6 @@ local function stopSfx(s, fade)
 	Debris:AddItem(s, (fade or 0.25) + 0.1)
 end
 
----------------------------------------------------------------- NETWORK-OWNED PHYSICS
--- Only UNANCHORED parts this client has NETWORK OWNERSHIP of can be pushed around (props near you, tools you
--- dropped, ...). This client simulates them, so what we write replicates. Characters / NPCs are handled by the
--- NPC functions below instead.
 local MAX_ASSEMBLIES = 300
 local MAX_SPEED = 420
 
@@ -1163,10 +1110,6 @@ local function groundAt(position, params)
 	return hit and hit.Position or position
 end
 
----------------------------------------------------------------- NPC DAMAGE
--- An NPC = any Model with a living Humanoid that is not a player's character.
--- hurt(n, pct) = percent of max health. Health is changed on this client; for NPCs your
--- client spawned (like the DuaKNo spawner) that is the real thing.
 local function npcsIn(position, radius)
 	local params = OverlapParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -1187,7 +1130,6 @@ local function npcsIn(position, radius)
 	return list
 end
 
--- EXECUTE: every attack checks the NPC's current health first; at or under 10% the hit is an instant kill
 local EXECUTE_BELOW = 0.10
 local function executeCheck(n)
 	local hum = n.hum
@@ -1199,7 +1141,6 @@ local function executeCheck(n)
 	return false
 end
 
--- if the NPC you hit has no health bar, switch on Roblox's own overhead bar for it
 local function ensureBar(hum)
 	pcall(function()
 		if hum.HealthDisplayType ~= Enum.HumanoidHealthDisplayType.AlwaysOn then
@@ -1243,7 +1184,6 @@ local function modelVel(model, vel, spin)
 	end
 end
 
--- throws an NPC. Living NPCs get PlatformStand for `stun` seconds so they fly instead of walking it off.
 local function launch(n, vel, stun)
 	local hum = n.hum
 	if hum.Parent and hum.Health > 0 then
@@ -1281,7 +1221,6 @@ local function slowNpc(n, factor, dur)
 	end
 end
 
--- fades a model / part out in `color`, then deletes it (this client only)
 local function dissolve(inst, dur, color)
 	local function one(d)
 		if d:IsA("BasePart") then
@@ -1309,7 +1248,6 @@ local function tipPos(character, root)
 	return root.Position + V3(0, 2, 0)
 end
 
----------------------------------------------------------------- homing bolts (one Heartbeat for all of them)
 local bolts, boltConn = {}, nil
 
 local function boltStep(dt)
@@ -1330,8 +1268,8 @@ local function boltStep(dt)
 				pcall(b.onHit, b.pos, dist <= b.hitRadius * 1.5 and npc or nil)
 			else
 				b.dir = (b.dir + want.Unit * b.turn * dt * (1 + age)).Unit
-				b.speed += b.accel * dt
-				b.pos += b.dir * b.speed * dt
+				b.speed = b.speed + (b.accel * dt)
+				b.pos = b.pos + (b.dir * b.speed * dt)
 				ps[#ps + 1] = b.part
 				cs[#cs + 1] = CFrame.lookAt(b.pos, b.pos + b.dir)
 			end
@@ -1344,7 +1282,6 @@ local function boltStep(dt)
 	end
 end
 
--- o: pos, dir, npc, fallback, speed, accel, turn, life, hitRadius, size, ball, color, onHit(pos, npc)
 local function launchBolt(o)
 	local size = o.size or V3(0.8, 0.8, 5)
 	local part = fxPart({
@@ -1369,8 +1306,6 @@ local function launchBolt(o)
 	end
 end
 
----------------------------------------------------------------- small shared effects
--- a spike that bursts out of the ground, holds, then sinks back
 local function spikeAt(base, width, height, bodyColor, glowColor, rise, hold)
 	local yaw = rand() * TAU
 	local tilt = CFrame.Angles(rf(-0.12, 0.12), 0, rf(-0.12, 0.12))
@@ -1394,7 +1329,6 @@ local function spikeAt(base, width, height, bodyColor, glowColor, rise, hold)
 	end)
 end
 
--- a flat ring (circle outline) on a SurfaceGui, visible from above and below
 local function haloRing(pos, diameter, color)
 	local p = fxPart({ Size = V3(diameter, 0.05, diameter), Position = pos, Transparency = 1 })
 	for _, face in ipairs({ Enum.NormalId.Top, Enum.NormalId.Bottom }) do
@@ -1410,7 +1344,6 @@ local function haloRing(pos, diameter, color)
 	return p
 end
 
--- sword charge-up (sparkles, trail, light, shake + charge sound). returns finish()
 local function chargeUp(tool, dur, small)
 	local s = mode().scale
 	local h = tool and tool:FindFirstChild("Handle")
@@ -1449,7 +1382,6 @@ local function chargeUp(tool, dur, small)
 	end
 end
 
--- 8 orbs spiralling around you while you charge. returns stop()
 local function chargeOrbs(root, m, dur)
 	local pal = m.pal
 	local orbs = {}
@@ -1482,7 +1414,6 @@ local function chargeOrbs(root, m, dur)
 	end
 end
 
--- magic circle + filling disc + fence of light posts around the target. returns { circle, destroy }
 local function telegraph(targetPos, R, m, chargeDur, circleDur)
 	local sq = math.sqrt(m.scale)
 	local circle = magicCircle(targetPos, R, m, circleDur or chargeDur)
@@ -1509,13 +1440,10 @@ local function telegraph(targetPos, R, m, chargeDur, circleDur)
 	return t
 end
 
----------------------------------------------------------------- Ability 1: NOVA (Z) - a different one for every Periastron
 local busy = false
 local lastCast = -math.huge
 local NOVAS = {}
 
--- supernova damage used by the Ivory star and the Amethyst comet: 100% at the center -> 35% at the edge,
--- instant kill for everything in range when Destructive is on
 local function supernovaDamage(target, ER, m, sq)
 	sfx(SFX.impactExp, 1.5, anchorPart(target, 6), false, 0.85)
 	sfx(SFX.explosion, 1.2, anchorPart(target, 6), false, 0.9)
@@ -1530,7 +1458,6 @@ local function supernovaDamage(target, ER, m, sq)
 	if m.big then task.delay(0.55, function() physBlast(target, ER * 0.8, m.scale * 0.6) end) end
 end
 
--- a small homing meteoroid (Amethyst)
 local function meteoroid(m, from, npc, fallback, idx)
 	local sq = math.sqrt(m.scale)
 	local goal = npc and npc.root.Position or fallback
@@ -1551,175 +1478,156 @@ local function meteoroid(m, from, npc, fallback, idx)
 	})
 end
 
--- IVORY: Heaven's Ascension. A column of light opens over the target: every NPC and owned part in it is lifted up
--- in a slow spiral between rising halos, hangs at the top for a heartbeat, then a colossal sword of light falls
--- and drives everything back into the ground.
 NOVAS.ivory = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local R = 70 * sq
-	local H = 140 * sq
+	local R = 95 * sq
 	local target = groundTarget(ctx.aim, root, character)
+	local HB = 110 * sq -- height of the bell's rim above the ground
 
-	sfx(SFX.magicCast, 1.3, root) -- plays the instant the button is pressed
+	sfx(SFX.magicCast, 1.3, root) -- instant
 	local stopOrbs = chargeOrbs(root, m, 0.7)
-	local tele = telegraph(target, R, m, 0.7, 1.7)
+	local tele = telegraph(target, R * 0.8, m, 0.7, 2)
 	task.wait(0.7)
 	stopOrbs()
 	tele.circle.lock()
 
 	task.spawn(function()
+		local bellParts = {}
 		local ok, err = pcall(function()
 			task.wait(0.2)
 			tele.destroy()
-			sfx(SFX.thunderBoom, 1.3, anchorPart(target, 8), false, 1.1)
-			flash(target, 0.6, m)
-			shake(0.5, 1.2 * sq)
+			skyOn(0.35, pal[1], 0.6)
 
-			local col = fxPart({
-				Shape = Enum.PartType.Cylinder, Color = pal[1], Transparency = 0.6, Size = V3(1, R * 1.9, R * 1.9),
-				CFrame = CFrame.new(target + V3(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			})
-			local core = fxPart({
-				Shape = Enum.PartType.Cylinder, Color = WHITE, Transparency = 0.3, Size = V3(1, R * 0.5, R * 0.5),
-				CFrame = CFrame.new(target + V3(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			})
-			tw(col, 0.5, { Size = V3(H, R * 1.9, R * 1.9), CFrame = CFrame.new(target + V3(0, H / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)) }, ES.Quad)
-			tw(core, 0.5, { Size = V3(H, R * 0.5, R * 0.5), CFrame = CFrame.new(target + V3(0, H / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)) }, ES.Quad)
-			Debris:AddItem(col, 6)
-			Debris:AddItem(core, 6)
-			skyOn(0.45, pal[1], 0.6)
+			local GOLDC = Color3.fromRGB(255, 205, 70)
+			local layers = { { 12, 6 }, { 22, 7 }, { 32, 7 }, { 42, 7 }, { 50, 6 }, { 54, 3 } } -- { diameter, height }
+			local offs, parts = {}, {}
+			local y = 0
+			for i, L in ipairs(layers) do
+				local d, h = L[1] * sq, L[2] * sq
+				local p = fxPart({
+					Shape = Enum.PartType.Cylinder, Color = i == 6 and WHITE or GOLDC, Transparency = 0.05,
+					Size = V3(h, d, d), Position = target + V3(0, 400, 0),
+				})
+				parts[#parts + 1] = p
+				offs[#offs + 1] = CFrame.new(0, -(y + h / 2), 0) * CFrame.Angles(0, 0, math.rad(90))
+				y = y + (h)
+			end
+			local clapper = ballPart(target + V3(0, 400, 0), 9 * sq, WHITE, 0)
+			parts[#parts + 1] = clapper
+			offs[#offs + 1] = CFrame.new(0, -(y - 1 * sq), 0)
+			local halo = disc(target + V3(0, 400, 0), 60 * sq, 0.8 * sq, pal[1], 0.3)
+			parts[#parts + 1] = halo
+			offs[#offs + 1] = CFrame.new(0, -y - 2 * sq, 0) * CFrame.Angles(0, 0, math.rad(90))
+			for _, p in ipairs(parts) do Debris:AddItem(p, 16) end
+			bellParts = parts
+			local totalH = y
+			local cfs = {}
+			local function place(pivot)
+				for i, off in ipairs(offs) do cfs[i] = pivot * off end
+				workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+			end
+			local pivotPos = target + V3(0, HB + totalH, 0)
 
-			local RINGS = 7
-			local rings = {}
-			for i = 1, RINGS do rings[i] = disc(target + V3(0, i * H / RINGS, 0), R * 1.7, 0.5, pick(m, i), 0.2) end
-			local ringCF = {}
+			sfx(SFX.whooshBoom, 1.1, anchorPart(target, 6), false, 0.8)
+			local t0 = os.clock()
+			while os.clock() - t0 < 0.9 do
+				RunService.Heartbeat:Wait()
+				local k = math.min((os.clock() - t0) / 0.9, 1)
+				k = 1 - (1 - k) ^ 3
+				place(CFrame.new(pivotPos + V3(0, 300 * (1 - k), 0)))
+			end
+			flash(target + V3(0, HB, 0), 0.5, m)
 
-			local ASC = m.big and 3.6 or 3.0
-			local tracked, ownedMap = {}, {}
-			local t0, lastScan, lastBurst = os.clock(), -1, 0
-			while true do
-				local dt = RunService.Heartbeat:Wait()
-				local t = os.clock() - t0
-				if t >= ASC then break end
-				local k = t / ASC
-
-				for i, r in ipairs(rings) do
-					local y = ((t * 38 + (i - 1) * H / RINGS) % H)
-					ringCF[i] = CFrame.new(target + V3(0, y, 0)) * CFrame.Angles(0, t * (i % 2 == 0 and 2 or -2), math.rad(90))
-					r.Transparency = 0.15 + 0.7 * (y / H) ^ 2
+			local mouth = target + V3(0, HB, 0)
+			local tracked = {}
+			local function toll(n)
+				local sway = (n % 2 == 0) and -0.28 or 0.28
+				local ts = os.clock()
+				while os.clock() - ts < 0.45 do
+					RunService.Heartbeat:Wait()
+					local k = (os.clock() - ts) / 0.45
+					place(CFrame.new(pivotPos) * CFrame.Angles(0, 0, sway * math.sin(k * math.pi)))
 				end
-				workspace:BulkMoveTo(rings, ringCF, Enum.BulkMoveMode.FireCFrameChanged)
+				sfx(SFX.gong, 1.6, anchorPart(mouth, 8), false, 1.05 - n * 0.12)
+				if n == 3 then sfx(SFX.thunderHuge, 1.2, anchorPart(mouth, 8), false, 1) end
+				flash(mouth, 0.5, m)
+				shake(0.5, (1 + n * 0.5) * sq)
+				local reach = R * (0.55 + 0.25 * n)
+				local wave = ballPart(mouth, 4, pal[1], 0.6, { Material = Enum.Material.ForceField })
+				tweenKill(wave, 0.7, { Size = Vector3.one * reach * 2, Transparency = 1 }, ES.Quad, ED.Out)
+				local ring = disc(target + V3(0, 0.5, 0), 4, 0.5, WHITE, 0.2)
+				tweenKill(ring, 0.7, { Size = V3(0.3, reach * 2, reach * 2), Transparency = 1 }, ES.Quad, ED.Out)
+				for i = 1, 3 do shockwave(target, reach * (1.1 - i * 0.2), 0.7, i * 0.06, pal[i % 3 + 1]) end
 
-				if t - lastBurst > 0.18 then
-					lastBurst = t
-					local a = rand() * TAU
-					burst(anchorPart(target + V3(math.cos(a) * R * 0.7, rf(0, H * 0.7), math.sin(a) * R * 0.7), 2), { "Stars" })
-				end
-
-				if os.clock() - lastScan > 0.3 then
-					lastScan = os.clock()
-					for _, n in ipairs(npcsIn(target + V3(0, H / 2, 0), R * 1.1)) do
-						if not tracked[n.model] and flat(n.root.Position - target).Magnitude <= R then
-							local off = flat(n.root.Position - target)
-							tracked[n.model] = { n = n, a = math.atan2(off.Z, off.X), r = math.max(off.Magnitude, R * 0.15), y = n.root.Position.Y - target.Y }
-							n.hum.PlatformStand = true
-							for _, p in ipairs(n.model:GetDescendants()) do
-								if p:IsA("BasePart") and p.Anchored then p.Anchored = false end
-							end
+				for _, npc in ipairs(npcsIn(target + V3(0, HB * 0.3, 0), reach)) do
+					if flat(npc.root.Position - target).Magnitude <= reach then
+						tracked[npc.model] = npc
+						if n == 1 then
+							hurt(npc, 6)
+							launch(npc, V3(0, 105, 0), 2.2)
+						elseif n == 2 then
+							hurt(npc, 8)
+							npc.hum.PlatformStand = true
+							npc.root.AssemblyLinearVelocity = V3(0, 6, 0)
+							npc.root.AssemblyAngularVelocity = V3(0, 22, 0)
+						else
+							hurtFrac(npc, m.big and 0.4 or 0.28)
+							launch(npc, V3(rf(-20, 20), -300, rf(-20, 20)), 1.4)
 						end
-					end
-					for _, r2 in ipairs(ownedRoots(target + V3(0, H / 2, 0), R * 1.1)) do
-						if not ownedMap[r2] and flat(r2.Position - target).Magnitude <= R then
-							local off = flat(r2.Position - target)
-							ownedMap[r2] = { a = math.atan2(off.Z, off.X), r = math.max(off.Magnitude, R * 0.15), y = r2.Position.Y - target.Y }
-						end
+						burst(anchorPart(npc.root.Position, 2), { "Stars" })
 					end
 				end
-
-				local function lift(r2, s, spin)
-					s.a += dt * (1.6 + 2.4 * k)
-					s.y += dt * (H * 0.62 / ASC) * (0.6 + 0.8 * k)
-					s.r += (R * 0.28 - s.r) * math.min(1, dt * 1.2)
-					r2.CFrame = CFrame.new(target + V3(math.cos(s.a) * s.r, s.y, math.sin(s.a) * s.r)) * CFrame.Angles(0, s.a * spin, 0)
-					r2.AssemblyLinearVelocity = V3(0, 0, 0)
-					r2.AssemblyAngularVelocity = V3(0, 0, 0)
-				end
-				for model, s in pairs(tracked) do
-					if model.Parent and s.n.root.Parent and s.n.hum.Health > 0 then lift(s.n.root, s, 1.5) end
-				end
-				for r2, s in pairs(ownedMap) do
-					if r2.Parent and not r2.Anchored then lift(r2, s, 2.5) end
+				for _, r2 in ipairs(ownedRoots(target + V3(0, HB * 0.3, 0), reach)) do
+					if flat(r2.Position - target).Magnitude <= reach then
+						if n == 1 then kick(r2, V3(rf(-10, 10), 100, rf(-10, 10)), randomSpin(6))
+						elseif n == 2 then kick(r2, V3(0, 4, 0), V3(0, 24, 0))
+						else kick(r2, V3(rf(-70, 70), -240, rf(-70, 70)), randomSpin(12)) end
+					end
 				end
 			end
+			for n = 1, 3 do toll(n) end
 
-			-- the apex: everything hangs for a beat while the sword of light is called
-			sfx(SFX.thunderHuge, 1.4, anchorPart(target, 8), false, 1)
-			sfx(SFX.gong, 1.3, anchorPart(target, 8), false, 1.1)
-			flash(target + V3(0, H * 0.8, 0), 0.9, m)
-			local blade = fxPart({ Color = WHITE, Size = V3(R * 0.22, R * 3.2, R * 0.06), Position = target + V3(0, H * 2.4, 0) })
-			local glowB = fxPart({ Color = pal[1], Transparency = 0.45, Size = V3(R * 0.5, R * 3.4, R * 0.2), Position = target + V3(0, H * 2.4, 0) })
-			local guard = fxPart({ Color = pal[1], Size = V3(R * 0.9, R * 0.1, R * 0.12), Position = target + V3(0, H * 2.4 + R * 1.6, 0) })
-			Debris:AddItem(blade, 3)
-			Debris:AddItem(glowB, 3)
-			Debris:AddItem(guard, 3)
-			task.wait(0.35)
-			local land = target + V3(0, R * 1.6 + 2, 0)
-			tw(blade, 0.22, { Position = land }, ES.Quad, ED.In)
-			tw(glowB, 0.22, { Position = land }, ES.Quad, ED.In)
-			tw(guard, 0.22, { Position = land + V3(0, R * 1.6, 0) }, ES.Quad, ED.In)
-			task.wait(0.22)
-
-			-- SMITE
-			sfx(SFX.explosion2, 1.6, anchorPart(target, 8), false, 0.9)
+			local fs = os.clock()
+			while os.clock() - fs < 0.3 do
+				RunService.Heartbeat:Wait()
+				local k = math.min((os.clock() - fs) / 0.3, 1) ^ 2
+				place(CFrame.new(pivotPos - V3(0, HB * k, 0)))
+			end
+			sfx(SFX.explosion, 1.6, anchorPart(target, 8), false, 0.9)
+			sfx(SFX.glass, 1.5, anchorPart(target, 8), false, 0.7)
 			sfx(SFX.impactExp, 1.4, anchorPart(target, 8), false, 0.8)
-			for i = 1, 5 do shockwave(target, R * (1.5 - i * 0.2) * 1.4, 0.7, (i - 1) * 0.07, pal[(i - 1) % 3 + 1]) end
-			pillar(target, 16 * sq, pal[1], 0.2, 1.2)
-			pillar(target, 7 * sq, WHITE, 0.05, 1)
-			scorch(target, R * 0.8, m)
-			cracks(target, R * 0.8, m, m.big and 30 or 20)
-			flingGround(target, R * 0.6, m.scale * 0.8)
-			burst(anchorPart(target + V3(0, 3, 0)), { "Rays_Thick", "Supernova", "Stars", "Stardust" })
-			shake(1, 2.5 * sq)
-			fovPunch(8, 0.7)
 			skyOff(1.5)
-			tweenKill(col, 0.5, { Transparency = 1 })
-			tweenKill(core, 0.5, { Transparency = 1 })
-			tweenKill(blade, 0.4, { Transparency = 1 })
-			tweenKill(glowB, 0.4, { Transparency = 1 })
-			tweenKill(guard, 0.4, { Transparency = 1 })
-			for _, r in ipairs(rings) do tweenKill(r, 0.4, { Transparency = 1 }) end
-
-			for model, s in pairs(tracked) do
-				local n = s.n
-				if model.Parent and n.hum.Parent and n.hum.Health > 0 then
-					hurtFrac(n, m.big and 0.55 or 0.4)
-					launch(n, V3(rf(-30, 30), -260, rf(-30, 30)), 1.4)
-				end
+			flash(target, 1, m)
+			pillar(target, 16 * sq, pal[1], 0.2, 1.2)
+			scorch(target, R * 0.7, m)
+			cracks(target, R * 0.7, m, m.big and 30 or 20)
+			flingGround(target, R * 0.5, m.scale * 0.8)
+			shake(1, 2.4 * sq)
+			fovPunch(9, 0.7)
+			for _, p in ipairs(parts) do tweenKill(p, 0.4, { Transparency = 1 }) end
+			for i = 1, 30 do
+				local sh = fxPart({ Color = i % 2 == 0 and GOLDC or WHITE, Size = V3(rf(1, 3), rf(1, 3), rf(3, 8)) * sq, CFrame = CFrame.new(target + V3(0, 6, 0)) * CFrame.Angles(rand() * TAU, rand() * TAU, 0) })
+				local a = rand() * TAU
+				tweenKill(sh, 1, { Position = target + V3(math.cos(a) * rf(10, R), rf(0, 10), math.sin(a) * rf(10, R)), Transparency = 1 }, ES.Quad, ED.Out, 1.1)
 			end
-			for _, n in ipairs(npcsIn(target, R * 1.1)) do
-				if not tracked[n.model] then
-					hurtFrac(n, 0.25)
-					launch(n, flatDir(flat(n.root.Position - target)) * 120 + V3(0, 90, 0), 1)
-				end
+			for _, npc in ipairs(npcsIn(target, R * 0.8)) do
+				hurtFrac(npc, m.big and 0.3 or 0.2)
+				launch(npc, flatDir(flat(npc.root.Position - target)) * 130 + V3(0, 150, 0), 1.3)
 			end
-			for r2 in pairs(ownedMap) do
-				if r2.Parent and not r2.Anchored then
-					kick(r2, flatDir(flat(r2.Position - target)) * rf(60, 160) + V3(0, -120, 0), randomSpin(12))
-				end
+			for model, npc in pairs(tracked) do
+				if model.Parent and npc.hum.Parent and npc.hum.Health > 0 then npc.hum.PlatformStand = false end
 			end
-			physBlast(target, R * 1.1, m.scale * 0.8)
+			physBlast(target, R * 0.8, m.scale)
 		end)
+		for _, p in ipairs(bellParts) do tweenKill(p, 0.3, { Transparency = 1 }) end
 		tele.destroy()
 		skyOff(1)
-		if not ok then warn("[IvoryPeriastron] ivory nova: " .. tostring(err)) end
+		if not ok then warn("[IvoryPeriastron] toll of heaven: " .. tostring(err)) end
 	end)
 end
 
--- End-portal void: a camera-facing CIRCULAR disc showing an endless starfield tunnel (parallax layers zooming +
--- spinning). The gui sits in a CanvasGroup so it is clipped to a true circle, inside a round stone + glowing green
--- frame with a ring of green "eyes". center can move; call update(center) each frame.
 local function endPortal(center, D)
 	local TEAL = Color3.fromRGB(0, 28, 34)
 	local STAR_COLORS = {
@@ -1733,7 +1641,6 @@ local function endPortal(center, D)
 		Face = Enum.NormalId.Front, SizingMode = Enum.SurfaceGuiSizingMode.FixedSize, CanvasSize = Vector2.new(512, 512),
 		LightInfluence = 0, Brightness = 1.6, AlwaysOnTop = false,
 	}, face)
-	-- CanvasGroup + UICorner = real circular clipping (a plain Frame would leave rectangular edges)
 	local clip = make("CanvasGroup", {
 		Size = UDim2.fromScale(1, 1), BackgroundColor3 = TEAL, BorderSizePixel = 0, GroupTransparency = 0,
 	}, gui)
@@ -1765,7 +1672,6 @@ local function endPortal(center, D)
 	}, clip)
 	make("UICorner", { CornerRadius = UDim.new(0.5, 0) }, glow)
 	make("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }) }, glow)
-	-- soft dark vignette on the rim so the tunnel looks deep
 	local vig = make("Frame", {
 		Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, BorderSizePixel = 0,
 	}, clip)
@@ -1774,7 +1680,6 @@ local function endPortal(center, D)
 		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.78, 1), NumberSequenceKeypoint.new(1, 0.25) }),
 	}, vig)
 
-	-- round frame: two concentric discs behind the face (stone, glowing green) + ring of eyes
 	local stone = fxPart({
 		Shape = Enum.PartType.Cylinder, Color = Color3.fromRGB(62, 70, 56), Material = Enum.Material.Slate, Size = V3(D * 0.08, D * 1.2, D * 1.2),
 	})
@@ -1830,8 +1735,6 @@ local function endPortal(center, D)
 	return P
 end
 
--- NOIR: a black hole with an End-portal void. Everything (NPCs + owned parts) is dragged in hard, then it detonates.
--- Normal: damage 100% at the center -> 10% at the edge of the pull. Destructive: instant kill for everything.
 NOVAS.noir = function(ctx)
 	local m, root = ctx.m, ctx.root
 	local s, pal = m.scale, m.pal
@@ -1859,7 +1762,6 @@ NOVAS.noir = function(ctx)
 			portal = endPortal(hole, D)
 			local field = disc(target + V3(0, 0.2, 0), PR * 2, 0.1, pal[3], 0.55)
 			Debris:AddItem(field, 12)
-			-- a column of dark light tying the portal to the ground
 			local col = fxPart({ Color = pal[3], Transparency = 0.6, Size = V3(D * 0.12, hole.Y - target.Y, D * 0.12), Position = (hole + target) / 2 })
 			Debris:AddItem(col, 9)
 			skyOn(0.6, pal[2], 1.2)
@@ -1867,7 +1769,6 @@ NOVAS.noir = function(ctx)
 			burst(anchorPart(hole), { "Core", "Stardust" })
 			loopSnd = sfx(SFX.bhLoop, 1.4, anchorPart(hole, 12), true)
 
-			-- accretion: stars spiralling into the portal
 			local coreD = D
 			local starCount = m.big and 150 or 90
 			local stars, sp, cfs = {}, {}, {}
@@ -1878,7 +1779,6 @@ NOVAS.noir = function(ctx)
 				sp[i] = { r = rf(coreD * 0.6, PR * 0.85), a = rand() * TAU, y = rf(-0.3, 0.3), spd = rf(0.8, 1.2) }
 			end
 
-			-- the pull: positions are driven directly (velocity pulls just made NPCs spin on the spot)
 			local PULL = 7
 			local t0, lastScan, lastRing = os.clock(), -1, 0
 			local tracked, ownedList = {}, {}
@@ -1890,8 +1790,8 @@ NOVAS.noir = function(ctx)
 				portal.update(hole)
 
 				for i, st in ipairs(sp) do
-					st.r -= (14 + 60 * (1 - math.min(st.r / (PR * 0.85), 1))) * st.spd * dt
-					st.a += dt * (300 / (st.r + 14)) * st.spd * 3
+					st.r = st.r - ((14 + 60 * (1 - math.min(st.r / (PR * 0.85), 1))) * st.spd * dt)
+					st.a = st.a + (dt * (300 / (st.r + 14)) * st.spd * 3)
 					if st.r < coreD * 0.45 then
 						st.r = PR * rf(0.5, 0.85)
 						st.a = rand() * TAU
@@ -1945,7 +1845,6 @@ NOVAS.noir = function(ctx)
 				end
 			end
 
-			-- collapse
 			stopSfx(loopSnd, 0.4)
 			tw(lens, 0.4, { Size = Vector3.one * 2, Transparency = 1 }, ES.Quad, ED.In)
 			for _, st in ipairs(stars) do tweenKill(st, 0.4, { Position = hole, Transparency = 1 }, ES.Quad, ED.In) end
@@ -1958,7 +1857,6 @@ NOVAS.noir = function(ctx)
 			lens:Destroy()
 			skyOff(2)
 
-			-- BOOM
 			sfx(SFX.bhLaunch, 1.6, anchorPart(hole, 8))
 			sfx(SFX.impactExp, 1.6, anchorPart(hole, 8), false, 0.8)
 			sfx(SFX.psionic, 1.5, anchorPart(hole, 8), false, 0.7)
@@ -1979,7 +1877,6 @@ NOVAS.noir = function(ctx)
 			shake(1.4, 3 * sq)
 			fovPunch(10, 0.9)
 
-			-- damage + launch: 100% (center) -> 10% (edge); Destructive kills everything
 			local hitSet = {}
 			for _, n in ipairs(npcsIn(hole, PR)) do
 				hitSet[n.model] = true
@@ -2008,9 +1905,6 @@ NOVAS.noir = function(ctx)
 	end)
 end
 
--- AZURE: Phantom Slash. You blink through every NPC in range (nearest-neighbour chain), cutting each one three
--- times (each cut flings the NPC into the air and freezes it in a glass-blue "time lock"), snap back to where you
--- started and the whole chain is torn open by an Azure Cross that slams NPCs + owned parts into the ground.
 NOVAS.azure = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
@@ -2075,7 +1969,6 @@ NOVAS.azure = function(ctx)
 				sfx(SFX.dash, 0.5, root, false, rf(1.05, 1.35))
 				root.CFrame = CFrame.lookAt(dest, V3(tp.X, dest.Y, tp.Z))
 				shockwave(tp - V3(0, 2.5, 0), 10 * sq, 0.4, 0, pal[idx % 3 + 1])
-				-- time lock: the NPC is frozen mid-air inside a spinning glass ring
 				n.hum.PlatformStand = true
 				local ringP = fxPart({
 					Shape = Enum.PartType.Cylinder, Material = Enum.Material.Glass, Color = pal[1], Transparency = 0.4,
@@ -2096,7 +1989,6 @@ NOVAS.azure = function(ctx)
 				last = dest
 			end
 		end
-		-- snap back
 		if root.Parent then
 			streakBetween(last, home.Position, 2.6)
 			root.CFrame = home
@@ -2108,7 +2000,6 @@ NOVAS.azure = function(ctx)
 	if not ok then warn("[IvoryPeriastron] phantom slash: " .. tostring(err)) end
 	if not root.Parent then return end
 
-	-- Azure Cross on everything the chain touched: NPCs are hammered into the ground, owned parts around them burst up
 	task.wait(0.25)
 	shake(0.5, 1.4 * sq)
 	flash(home.Position, 0.5, m)
@@ -2135,85 +2026,142 @@ NOVAS.azure = function(ctx)
 	physBlast(home.Position, 40 * sq, m.scale * 0.5)
 end
 
--- CHARTREUSE: Green Forcefield. A huge dome that heals you, repels and punishes NPCs and bats owned parts away
 NOVAS.chartreuse = function(ctx)
-	local m, root, hum = ctx.m, ctx.root, ctx.hum
+	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local SR = 38 * sq
-	local DUR = 12
-	sfx(SFX.energyCharge, 1.1, root)
-	local shell = ballPart(root.Position, 2, pal[2], 0.45, { Material = Enum.Material.ForceField })
-	local glow = ballPart(root.Position, 2, pal[1], 0.93)
-	tw(shell, 0.5, { Size = Vector3.one * SR * 2 }, ES.Back)
-	tw(glow, 0.5, { Size = Vector3.one * SR * 1.96 }, ES.Back)
-	local floorRing = disc(root.Position - V3(0, 2.9, 0), SR * 2, 0.1, pal[2], 0.6)
-	local floorCore = disc(root.Position - V3(0, 2.85, 0), SR * 1.2, 0.1, pal[1], 0.75)
-	local light = make("PointLight", { Color = pal[1], Brightness = 4, Range = 30, Shadows = false }, glow)
-	for _, p in ipairs({ shell, glow, floorRing, floorCore }) do Debris:AddItem(p, DUR + 3) end
-	flash(root.Position, 0.4, m)
-	shockwave(root.Position - V3(0, 2.5, 0), SR, 0.6, 0, pal[1])
-	burst(anchorPart(root.Position), { "Stars", "Stardust" })
+	local R = 80 * sq
+	local GROW = m.big and 3 or 2.4
+	local MAXSCALE = m.big and 3.2 or 2.6
+	local target = groundTarget(ctx.aim, root, character)
 
-	local t0, lastScan, lastOwned = os.clock(), 0, 0
-	local cd, ownedList = {}, {}
-	while os.clock() - t0 < DUR and root.Parent and hum.Health > 0 do
-		local dt = RunService.Heartbeat:Wait()
-		local c = root.Position
-		shell.CFrame = CFrame.new(c)
-		glow.CFrame = CFrame.new(c)
-		local fl = CFrame.new(c - V3(0, 2.9, 0)) * CFrame.Angles(0, 0, math.rad(90))
-		floorRing.CFrame = fl
-		floorCore.CFrame = fl
-		hum.Health = math.min(hum.MaxHealth, hum.Health + hum.MaxHealth * 0.5 * dt) -- rapid heal
+	sfx(SFX.energyCharge, 1.3, root, false, 0.9) -- instant
+	local stopOrbs = chargeOrbs(root, m, 0.7)
+	local tele = telegraph(target, R, m, 0.7, 1.7)
+	task.wait(0.7)
+	stopOrbs()
+	tele.circle.lock()
 
-		if os.clock() - lastScan > 0.07 then
-			lastScan = os.clock()
-			for _, n in ipairs(npcsIn(c, SR + 10)) do
-				local off = n.root.Position - c
-				if off.Magnitude < SR + 3 then
-					local away = flatDir(flat(off))
-					launch(n, away * 110 + V3(0, 25, 0), 0.5)
-					if (cd[n.model] or 0) < os.clock() then
-						cd[n.model] = os.clock() + 0.3
-						hurt(n, 10)
-						local rip = ballPart(c + (off.Magnitude > 0.1 and off.Unit or Vector3.xAxis) * SR, 4, pal[1], 0.3)
-						tweenKill(rip, 0.35, { Size = Vector3.one * 14 * sq, Transparency = 1 })
+	task.spawn(function()
+		local victims, partsV = {}, {}
+		local ok, err = pcall(function()
+			task.wait(0.2)
+			tele.destroy()
+			skyOn(0.3, pal[2], 0.5)
+			flash(target, 0.6, m)
+			sfx(SFX.psionic, 1.2, anchorPart(target, 6), false, 0.8)
+			sfx(SFX.whooshBoom, 1, anchorPart(target, 6), false, 0.7)
+			local pulse = disc(target + V3(0, 0.6, 0), 4, 0.6, pal[1], 0.3)
+			tweenKill(pulse, 0.7, { Size = V3(0.4, R * 2, R * 2), Transparency = 1 }, ES.Quad, ED.Out)
+			local dome = ballPart(target, 4, pal[2], 0.7, { Material = Enum.Material.ForceField })
+			tweenKill(dome, 0.8, { Size = Vector3.one * R * 2.2, Transparency = 1 }, ES.Quad, ED.Out)
+			for i = 1, 3 do shockwave(target, R * (0.5 + i * 0.25), 0.7, i * 0.07, pal[i % 3 + 1]) end
+
+			local cap = m.big and 50 or 18
+			local list = npcsIn(target, R)
+			while #list > cap do table.remove(list) end
+			for _, n in ipairs(list) do
+				local okS, base = pcall(function() return n.model:GetScale() end)
+				victims[#victims + 1] = {
+					n = n, base = okS and base or 1, canScale = okS,
+					hl = make("Highlight", { FillColor = pal[1], OutlineColor = pal[2], FillTransparency = 0.45, DepthMode = Enum.HighlightDepthMode.AlwaysOnTop }, n.model),
+					y0 = n.root.Position.Y,
+				}
+				n.hum.PlatformStand = true
+				for _, p in ipairs(n.model:GetDescendants()) do
+					if p:IsA("BasePart") and p.Anchored then p.Anchored = false end
+				end
+			end
+			local owned = ownedRoots(target, R)
+			for i = 1, math.min(#owned, 50) do
+				local r2 = owned[i]
+				partsV[#partsV + 1] = { r = r2, size = r2.Size, color = r2.Color }
+			end
+
+			local t0, lastTick = os.clock(), 0
+			while os.clock() - t0 < GROW do
+				local dt = RunService.Heartbeat:Wait()
+				local k = (os.clock() - t0) / GROW
+				local sc = 1 + (MAXSCALE - 1) * k ^ 1.6
+				for _, v in ipairs(victims) do
+					local n = v.n
+					if n.hum.Parent and n.root.Parent and n.hum.Health > 0 then
+						if v.canScale then pcall(n.model.ScaleTo, n.model, v.base * sc) end
+						local p = n.root.Position
+						n.root.CFrame = CFrame.new(V3(p.X + rf(-0.4, 0.4) * k * 2, v.y0 + 6 * k * sq + (sc - 1) * 3, p.Z + rf(-0.4, 0.4) * k * 2)) * CFrame.Angles(0, k * 8 + t0, 0)
+						n.root.AssemblyLinearVelocity = V3(0, 0, 0)
+						n.root.AssemblyAngularVelocity = V3(0, 0, 0)
+						v.hl.FillColor = pal[1]:Lerp(Color3.fromRGB(255, 255, 255), math.sin(k * 30) * 0.3 + 0.3)
+					end
+				end
+				for _, pv in ipairs(partsV) do
+					if pv.r.Parent and not pv.r.Anchored then
+						pcall(function() pv.r.Size = pv.size * sc end)
+						pv.r.Color = pv.color:Lerp(pal[1], k)
+						pv.r.AssemblyLinearVelocity = pv.r.AssemblyLinearVelocity * 0.9 + V3(0, 2, 0)
+					end
+				end
+				if os.clock() - lastTick > 0.4 then
+					lastTick = os.clock()
+					for _, v in ipairs(victims) do
+						if v.n.hum.Parent and v.n.hum.Health > 0 then
+							hurt(v.n, 2)
+							burst(anchorPart(v.n.root.Position, 2), { "Stars" })
+						end
+					end
+					sfx(SFX.bling, 0.4, anchorPart(target + V3(rf(-20, 20), rf(2, 25), rf(-20, 20)), 2), false, rf(0.5, 0.9))
+				end
+			end
+
+			skyOff(1.2)
+			sfx(SFX.explosion, 1.6, anchorPart(target, 8), false, 0.9)
+			sfx(SFX.impactExp, 1.3, anchorPart(target, 8), false, 0.8)
+			shake(0.9, 2 * sq)
+			fovPunch(8, 0.6)
+			local popped = 0
+			for _, v in ipairs(victims) do
+				local n = v.n
+				if v.hl then v.hl:Destroy() end
+				if v.canScale then pcall(n.model.ScaleTo, n.model, v.base) end
+				if n.hum.Parent and n.root.Parent then
+					popped = popped + (1)
+					local p = n.root.Position
+					shockwave(p - V3(0, 2.5, 0), 16 * sq, 0.5, 0, pal[1])
+					burst(anchorPart(p, 2), { "Rays_Thick", "Stars", "Stardust" })
+					for i = 1, 6 do
+						local blob = ballPart(p, rf(1.5, 4) * sq, pick(m, i), 0.1)
+						tweenKill(blob, 0.8, { Position = p + V3(rf(-30, 30), rf(5, 35), rf(-30, 30)) * sq, Transparency = 1, Size = Vector3.one * 0.3 }, ES.Quad, ED.Out, 0.9)
+					end
+					if popped <= 4 then sfx(SFX.bling, 0.9, anchorPart(p, 3), false, rf(0.4, 0.7)) end
+					if n.hum.Health > 0 then
+						hurtFrac(n, m.big and 0.55 or 0.4)
+						launch(n, V3(rf(-100, 100), rf(120, 200), rf(-100, 100)), 1.4)
 					end
 				end
 			end
-		end
-		if os.clock() - lastOwned > 0.25 then
-			lastOwned = os.clock()
-			ownedList = ownedRoots(c, SR + 8)
-		end
-		for _, r2 in ipairs(ownedList) do
-			if r2.Parent and not r2.Anchored then
-				local off = r2.Position - c
-				if off.Magnitude < SR + 3 and off.Magnitude > 6 then
-					kick(r2, off.Unit * 90 + V3(0, 20, 0), randomSpin(6))
+			for _, pv in ipairs(partsV) do
+				if pv.r.Parent then
+					pcall(function() pv.r.Size = pv.size end)
+					pv.r.Color = pv.color
+					kick(pv.r, V3(rf(-1, 1), rf(0.3, 1), rf(-1, 1)).Unit * rf(150, 260), randomSpin(16))
 				end
 			end
+			scorch(target, R * 0.5, m)
+			physBlast(target, R, m.scale * 0.6)
+		end)
+		for _, v in ipairs(victims) do
+			if v.canScale then pcall(v.n.model.ScaleTo, v.n.model, v.base) end
+			if v.hl then v.hl:Destroy() end
 		end
-	end
-
-	-- the shield bursts
-	local c = root.Position
-	tweenKill(shell, 0.4, { Size = Vector3.one * SR * 2.6, Transparency = 1 })
-	tweenKill(glow, 0.4, { Transparency = 1 })
-	tweenKill(floorRing, 0.4, { Transparency = 1 })
-	tweenKill(floorCore, 0.4, { Transparency = 1 })
-	for i = 1, 3 do shockwave(c - V3(0, 2.5, 0), SR * (1.9 - i * 0.3), 0.6, (i - 1) * 0.08, pal[i]) end
-	burst(anchorPart(c), { "Rays_Thick", "Stars" })
-	sfx(SFX.impactExp, 1.1, anchorPart(c, 4), false, 1.1)
-	for _, n in ipairs(npcsIn(c, SR * 1.6)) do
-		hurt(n, 18)
-		launch(n, flatDir(flat(n.root.Position - c)) * 120 + V3(0, 70, 0), 1)
-	end
-	physBlast(c, SR * 1.6, m.scale * 0.5)
+		for _, pv in ipairs(partsV) do
+			if pv.r.Parent then pcall(function() pv.r.Size = pv.size end) end
+		end
+		tele.destroy()
+		skyOff(1)
+		if not ok then warn("[IvoryPeriastron] gamma mutation: " .. tostring(err)) end
+	end)
 end
 
--- AMETHYST: the sky goes dark and a colossal amethyst comet slams into the target
 NOVAS.amethyst = function(ctx)
 	local m, root = ctx.m, ctx.root
 	local s, pal = m.scale, m.pal
@@ -2235,7 +2183,6 @@ NOVAS.amethyst = function(ctx)
 			tele.destroy()
 			explode(target, m)
 			supernovaDamage(target, R, m, sq)
-			-- the comet shatters: fragments rain down on whatever is left
 			for i = 1, (m.big and 30 or 14) do
 				task.delay(0.15 + i * 0.07, function()
 					local npcs = npcsIn(target, R * 1.4)
@@ -2253,8 +2200,6 @@ NOVAS.amethyst = function(ctx)
 	end)
 end
 
--- CRIMSON: red spots mark the ground around you, then a ring of huge laser pillars spirals in around you and merges
--- into one column that disintegrates NPCs and owned parts
 NOVAS.crimson = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
@@ -2320,7 +2265,7 @@ NOVAS.crimson = function(ctx)
 				local c = root.Position
 				local h = HEIGHT * math.min(t / 0.5, 1)
 				local r = Rp * (1 - k ^ 1.4)
-				spin += dt * (1.5 + 4 * k)
+				spin = spin + (dt * (1.5 + 4 * k))
 				local axes = {}
 				for i, p in ipairs(pillars) do
 					local x, z = c.X + math.cos(p.a + spin) * r, c.Z + math.sin(p.a + spin) * r
@@ -2397,8 +2342,6 @@ NOVAS.crimson = function(ctx)
 	end)
 end
 
--- GRIMGOLD: Sonar. Orange screen, a duplicate sword follows you, and sonar pulses sweep out: they tag NPCs through
--- walls (blue highlight), slow them and damage them
 NOVAS.grimgold = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -2472,7 +2415,7 @@ NOVAS.grimgold = function(ctx)
 		local t = os.clock() - t0
 		dup.CFrame = root.CFrame * CFrame.new(3, 1.5 + math.sin(t * 2) * 0.5, 4) * CFrame.Angles(0, t * 2, 0) * CFrame.Angles(math.rad(90), 0, 0)
 		if t >= nextPulse then
-			nextPulse += INTERVAL
+			nextPulse = nextPulse + (INTERVAL)
 			task.spawn(pulse, root.Position - V3(0, 2.8, 0))
 		end
 	end
@@ -2496,7 +2439,6 @@ local function cast(tool, aim)
 	busy = false
 end
 
----------------------------------------------------------------- shared character clone helpers (statue + step ghosts)
 local STRIP_CLASSES = {
 	"Humanoid", "Animator", "LuaSourceContainer", "BillboardGui", "Decal", "Texture",
 	"Clothing", "ShirtGraphic", "BodyColors", "CharacterMesh", "ForceField", "Sound",
@@ -2511,7 +2453,6 @@ local function shouldStrip(inst)
 	return false
 end
 
--- clone of the character reduced to pure shape; returns model + list of visible parts
 local function strippedClone(character)
 	character.Archivable = true
 	local model = character:Clone()
@@ -2539,7 +2480,6 @@ local function strippedClone(character)
 	return model, parts
 end
 
----------------------------------------------------------------- Ability 2: Angel's Past + recall
 local statue = nil -- { model, cf, tweens, conn }
 local lastStatueUse = -math.huge
 
@@ -2572,8 +2512,6 @@ local function buildStatue(character, root, m)
 	local tweens = {}
 	local coreFolder = make("Folder", { Name = "Inner" }, model)
 
-	-- every part becomes a pure-white glass shell with a real VOID inside:
-	-- shell (white) > thin colored rim > solid black void, with stars drifting in it
 	local function layer(part, scale, name)
 		local c = part:Clone()
 		for _, ch in ipairs(c:GetChildren()) do
@@ -2594,7 +2532,7 @@ local function buildStatue(character, root, m)
 
 	local totalVol = 0
 	for _, part in ipairs(parts) do
-		if part.Name ~= "Handle" then totalVol += part.Size.X * part.Size.Y * part.Size.Z end
+		if part.Name ~= "Handle" then totalVol = totalVol + (part.Size.X * part.Size.Y * part.Size.Z) end
 	end
 
 	for _, part in ipairs(parts) do
@@ -2613,7 +2551,6 @@ local function buildStatue(character, root, m)
 
 		local vol = part.Size.X * part.Size.Y * part.Size.Z
 		if vol > 0.6 and part.Name ~= "Handle" then
-			-- slow nebula wisps swirling inside the void
 			make("ParticleEmitter", {
 				Color = colorSeq(pal, math.floor(vol) % 3), LightEmission = 1,
 				Rate = math.clamp(vol * 0.9, 2, 9), Lifetime = NumberRange.new(2, 4),
@@ -2628,7 +2565,6 @@ local function buildStatue(character, root, m)
 			}, void)
 		end
 		if part.Name ~= "Handle" and totalVol > 0 then
-			-- floating dots inside the body (one emitter per part instead of ~120 animated parts)
 			local life = 5
 			make("ParticleEmitter", {
 				Color = ColorSequence.new({
@@ -2646,24 +2582,20 @@ local function buildStatue(character, root, m)
 			}, void)
 		end
 
-		-- pure white glass shell
 		part.Material = NEON
 		part.Color = WHITE
 		part.Transparency = 1
 		tw(part, 0.7, { Transparency = SHELL_TRANSPARENCY })
 	end
 
-	-- feet position
 	local hit = workspace:Raycast(root.Position, V3(0, -12, 0), rayParams(character, model))
 	local feet = hit and hit.Position or (root.Position - V3(0, 3, 0))
 	local center = root.Position
 
-	-- ground sigil: stacked colored discs
 	disc(feet + V3(0, 0.10, 0), 15, 0.1, pal[1], 0.55, model)
 	disc(feet + V3(0, 0.13, 0), 10, 0.1, pal[2], 0.4, model)
 	disc(feet + V3(0, 0.16, 0), 5.5, 0.1, WHITE, 0.2, model)
 
-	-- aura: rising motes + light
 	local aura = fxPart({ Name = "Aura", Transparency = 1, Size = V3(5, 0.2, 5), Position = feet + V3(0, 0.2, 0) }, model)
 	for i = 1, 2 do
 		make("ParticleEmitter", {
@@ -2680,7 +2612,6 @@ local function buildStatue(character, root, m)
 	glowPulse:Play()
 	table.insert(tweens, glowPulse)
 
-	-- pillars of light
 	local function statuePillar(diam, color, trans, tgtDiam, tgtTrans, period)
 		local p = fxPart({
 			Shape = Enum.PartType.Cylinder, Color = color, Transparency = trans, Size = V3(100, diam, diam),
@@ -2693,7 +2624,6 @@ local function buildStatue(character, root, m)
 	statuePillar(6, pal[1], 0.86, 4, 0.93, 1.7)
 	statuePillar(3, pal[2], 0.8, 1.8, 0.9, 1.3)
 
-	-- halos (Heaven's second halo is the rare gold)
 	local head = model:FindFirstChild("Head")
 	if head then
 		local hp = head.Position + V3(0, head.Size.Y / 2 + 0.95, 0)
@@ -2701,7 +2631,6 @@ local function buildStatue(character, root, m)
 		disc(hp + V3(0, 0.12, 0), 3.8, 0.08, m.accent or pal[2], 0.3, model)
 	end
 
-	-- orbiting orbs + ground runes (one BulkMoveTo per frame)
 	local moving, orbCount = {}, 6
 	for k = 1, orbCount do
 		local o = ballPart(center, 0.7, pal[k % 3 + 1], 1)
@@ -2754,7 +2683,6 @@ local function useStatue()
 	local pal = m.pal
 
 	if not statue then
-		-- first press: leave Angel's Past behind
 		local ok, result = pcall(buildStatue, character, root, m)
 		if ok and result then
 			result.cf = root.CFrame
@@ -2769,7 +2697,6 @@ local function useStatue()
 			warn("[IvoryPeriastron] Angel's Past failed: " .. tostring(result))
 		end
 	else
-		-- second press: teleport back to Angel's Past
 		local target = statue.cf
 		local from = root.Position
 
@@ -2789,7 +2716,6 @@ local function useStatue()
 		flash(arrive, 0.5, m)
 		shake(0.35, 0.9)
 
-		-- the return slams the area: 80% (right next to you) -> 30% (edge) of every NPC's max health
 		local AR = 45 * math.sqrt(m.scale)
 		shockwave(ground, AR, 0.6, 0.05, pal[1])
 		sfx(SFX.impactExp, 1.2, anchorPart(arrive, 5), false, 0.9)
@@ -2804,7 +2730,6 @@ local function useStatue()
 	end
 end
 
----------------------------------------------------------------- Ability 3: Halo Step / Rift Step
 local lastStep = -math.huge
 
 local function useStep()
@@ -2831,7 +2756,6 @@ local function useStep()
 	local startPos = root.Position
 	local endPos = startPos + dir * dist
 
-	-- afterimages along the path (character is stripped ONCE, then cloned per image)
 	local base = strippedClone(character)
 	if base then
 		for i = 0, 5 do
@@ -2853,7 +2777,6 @@ local function useStep()
 		base:Destroy()
 	end
 
-	-- light streak between start and end
 	local streakCF = CFrame.lookAt((startPos + endPos) / 2, endPos) * CFrame.Angles(0, math.rad(90), 0)
 	local function streak(thick, color, trans)
 		local st = fxPart({ Shape = Enum.PartType.Cylinder, Color = color, Transparency = trans, Size = V3(dist, thick, thick), CFrame = streakCF })
@@ -2862,7 +2785,6 @@ local function useStep()
 	streak(2.2, pal[1], 0.3)
 	streak(1.0, m.dark and m.mid or WHITE, 0.1)
 
-	-- go
 	root.CFrame = root.CFrame + dir * dist
 	local v = root.AssemblyLinearVelocity
 	root.AssemblyLinearVelocity = V3(0, v.Y, 0)
@@ -2875,7 +2797,6 @@ local function useStep()
 	burst(anchorPart(endPos), { "Rays_Thick", "Stars" })
 	fovPunch(10, 0.5)
 
-	-- the lunge cuts through every NPC on the path
 	local side0 = dir:Cross(Vector3.yAxis)
 	for _, n in ipairs(npcsIn((startPos + endPos) / 2, dist / 2 + 12)) do
 		if segDist(n.root.Position, startPos, endPos) < 9 then
@@ -2887,12 +2808,10 @@ local function useStep()
 	end
 end
 
----------------------------------------------------------------- Ability 4 (F): the second ability of every Periastron
 local judging = false
 local lastJudge = -math.huge
 local SECOND = {}
 
--- a standing crescent of light that flies forward. dmg = 0 makes it purely visual (used by the sword swing)
 local function crescentWave(origin, dir, m, size, dur, dmg)
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
@@ -2918,7 +2837,7 @@ local function crescentWave(origin, dir, m, size, dur, dmg)
 	local hit = {}
 	while os.clock() - start < dur do
 		local dt = RunService.Heartbeat:Wait()
-		pos += dir * 230 * dt
+		pos = pos + (dir * 230 * dt)
 		local baseCF = CFrame.lookAt(pos, pos + dir)
 		for i = 1, N do cfs[i] = baseCF * offs[i] end
 		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
@@ -2938,7 +2857,6 @@ local function crescentWave(origin, dir, m, size, dur, dmg)
 	for _, p in ipairs(parts) do tweenKill(p, 0.25, { Transparency = 1 }) end
 end
 
--- NOIR: Lights Out. The map goes dark, you turn invisible and fast, and shadow spikes impale NPCs around you
 SECOND.noir = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
@@ -2949,7 +2867,6 @@ SECOND.noir = function(ctx)
 	sfx(SFX.darkCharge, 1.2, root)
 	skyOn(1, pal[2], 0.8)
 
-	-- the small circle that stays lit
 	local lit = anchorPart(center + V3(0, 6, 0), DUR + 2)
 	make("PointLight", { Brightness = 4, Range = 60, Color = pal[1]:Lerp(WHITE, 0.4), Shadows = false }, lit)
 	local ring = disc(ground + V3(0, 0.2, 0), 90 * sq, 0.1, pal[1], 0.75)
@@ -2957,7 +2874,6 @@ SECOND.noir = function(ctx)
 	shockwave(ground, 45 * sq, 0.8, 0, pal[1])
 	flash(center, 0.4, m)
 
-	-- invisible + fast, sword hidden
 	local saved, savedEm = {}, {}
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("BasePart") or d:IsA("Decal") then
@@ -3003,62 +2919,133 @@ SECOND.noir = function(ctx)
 	burst(anchorPart(root.Position), { "Stars", "Stardust" })
 end
 
--- IVORY: Judgement. A magic circle locks on, then a rain of light spears hits the whole area
 SECOND.ivory = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
+	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local big = m.big
-	local R = 40 * sq
-	local aim = aimPoint()
-	if not aim then return end
-	local target = groundTarget(aim, root, character)
-	sfx(SFX.magicCast, 1.2, root)
-	local circle = magicCircle(target, R, m, 0.9)
-	task.wait(0.9)
-	circle.lock()
+	local LEN = m.big and 1100 or 520
+	local SPEED = 380
+	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 200)
+	local origin = root.Position + V3(0, 3, 0)
+	local dir = (aim - origin)
+	dir = dir.Magnitude > 1 and dir.Unit or root.CFrame.LookVector
+	local params = rayParams(character)
 
-	local count = big and 56 or 26
-	local len = 38 * sq
-	for i = 1, count do
-		local ang, r = rand() * TAU, R * 0.9 * math.sqrt(rand())
-		local p = target + V3(math.cos(ang) * r, 0, math.sin(ang) * r)
-		task.delay((i - 1) * 0.04, function()
-			local spear = fxPart({
-				Color = pick(m, i), Size = V3(0.9 * sq, 0.9 * sq, len), CFrame = CFrame.lookAt(p + V3(0, 150, 0), p),
-			})
-			local fall = tw(spear, 0.28, { CFrame = CFrame.lookAt(p + V3(0, len / 2, 0), p) }, ES.Quad, ED.In)
-			fall.Completed:Connect(function()
-				shockwave(p - V3(0, 0.2, 0), 7 * sq, 0.4, 0, spear.Color)
-				if i % 3 == 0 then burst(anchorPart(p), { "Stars" }) end
-				tweenKill(spear, 0.3, { Transparency = 1, Size = V3(0.1, 0.1, len) })
-				for _, n in ipairs(npcsIn(p, 7 * sq)) do
-					hurt(n, 8)
-					launch(n, flatDir(flat(n.root.Position - p)) * 40 + V3(0, 55, 0), 0.7)
+	sfx(SFX.magicCast, 1.3, root, false, 1.1)
+	sfx(SFX.thunderStrike, 1.2, root, false, 0.8)
+	flash(origin, 0.5, m)
+	shake(0.4, 1)
+
+	local GOLDC = Color3.fromRGB(255, 220, 110)
+	local shaft = fxPart({ Color = WHITE, Size = V3(2.4 * sq, 2.4 * sq, 70 * sq) })
+	local glow = fxPart({ Color = pal[1], Transparency = 0.5, Size = V3(6 * sq, 6 * sq, 74 * sq) })
+	local head = fxPart({ Color = GOLDC, Size = V3(5 * sq, 5 * sq, 14 * sq) })
+	local wingL = fxPart({ Color = WHITE, Transparency = 0.2, Size = V3(26 * sq, 0.6 * sq, 16 * sq) })
+	local parts = { shaft, glow, head, wingL }
+	local trail = make("Trail", {
+		Attachment0 = make("Attachment", { Position = V3(0, 0, 30 * sq) }, shaft), Attachment1 = make("Attachment", { Position = V3(0, 0, 30 * sq) + V3(0, 6 * sq, 0) }, shaft),
+		Lifetime = 0.5, LightEmission = 1, FaceCamera = true, Color = ColorSequence.new(pal[1], WHITE), Transparency = NumberSequence.new(0.2, 1),
+	}, shaft)
+	for _, p in ipairs(parts) do Debris:AddItem(p, LEN / SPEED + 4) end
+	local lightP = make("PointLight", { Color = pal[1], Brightness = 4, Range = 50, Shadows = false }, shaft)
+	local snd = sfx(SFX.whooshBoom, 1.2, shaft, true, 1.2)
+
+	local impaled, ownedImp = {}, {}
+	local pos, travelled = origin, 0
+	local cfs = {}
+	local lastScan, lastOwned = 0, 0
+	local count = 0
+	while travelled < LEN and root.Parent do
+		local dt = RunService.Heartbeat:Wait()
+		local step = SPEED * dt
+		local hit = workspace:Raycast(pos, dir * (step + 6 * sq), params)
+		if hit and not (hit.Instance:FindFirstAncestorOfClass("Model") and hit.Instance:FindFirstAncestorOfClass("Model"):FindFirstChildOfClass("Humanoid")) then
+			pos = hit.Position
+			break
+		end
+		pos = pos + (dir * step)
+		travelled = travelled + (step)
+		local cf = CFrame.lookAt(pos, pos + dir)
+		cfs[1] = cf * CFrame.new(0, 0, 8 * sq)
+		cfs[2] = cf * CFrame.new(0, 0, 8 * sq)
+		cfs[3] = cf * CFrame.new(0, 0, -30 * sq)
+		cfs[4] = cf * CFrame.new(0, 0, -22 * sq)
+		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+
+		if os.clock() - lastScan > 0.05 then
+			lastScan = os.clock()
+			for _, n in ipairs(npcsIn(pos, 16 * sq)) do
+				if not impaled[n.model] and count < 40 then
+					count = count + (1)
+					impaled[n.model] = { n = n, off = CFrame.new(rf(-2, 2) * sq, rf(-2, 2) * sq, rf(-12, 4) * sq) * CFrame.Angles(rf(-1, 1), rf(-1, 1), rf(-1, 1)) }
+					n.hum.PlatformStand = true
+					hurt(n, 10)
+					burst(anchorPart(n.root.Position, 2), { "Stars", "Rays_Thick" })
+					if count <= 4 then sfx(SFX.swordSlash, 0.8, anchorPart(n.root.Position, 3), false, rf(0.8, 1.1)) end
 				end
-			end)
-		end)
+			end
+		end
+		if os.clock() - lastOwned > 0.15 then
+			lastOwned = os.clock()
+			for _, r2 in ipairs(ownedRoots(pos, 16 * sq)) do
+				if not ownedImp[r2] and not r2.Anchored then
+					ownedImp[r2] = CFrame.new(rf(-3, 3) * sq, rf(-3, 3) * sq, rf(-12, 4) * sq) * CFrame.Angles(rf(-1, 1), rf(-1, 1), rf(-1, 1))
+				end
+			end
+		end
+		for model, s in pairs(impaled) do
+			if model.Parent and s.n.root.Parent and s.n.hum.Health > 0 then
+				s.n.root.CFrame = cf * s.off
+				s.n.root.AssemblyLinearVelocity = V3(0, 0, 0)
+				s.n.root.AssemblyAngularVelocity = V3(0, 0, 0)
+			end
+		end
+		for r2, off in pairs(ownedImp) do
+			if r2.Parent and not r2.Anchored then
+				r2.CFrame = cf * off
+				r2.AssemblyLinearVelocity = V3(0, 0, 0)
+			end
+		end
 	end
-	task.wait(count * 0.04 + 0.4)
 
-	circle.destroy()
-	pillar(target, 10 * sq, m.pal[1], 0.3, 1.2)
-	pillar(target, 5 * sq, WHITE, 0.1, 1)
-	for i = 1, 3 do shockwave(target, R * (1.3 - i * 0.25), 0.7, (i - 1) * 0.1, m.pal[i]) end
-	scorch(target, R, m)
-	cracks(target, R, m, big and 22 or 12)
-	burst(anchorPart(target), { "Rays_Thick", "Stars", "Stardust" })
-	flash(target, 0.5, m)
-	shake(0.5, 1.2 * sq)
-	for _, n in ipairs(npcsIn(target, R)) do
-		hurt(n, 25)
-		sfx(SFX.impactExp, 1, anchorPart(target, 4), false, 1)
-		launch(n, flatDir(flat(n.root.Position - target)) * 90 + V3(0, 80, 0), 1)
+	stopSfx(snd, 0.2)
+	sfx(SFX.explosion, 1.6, anchorPart(pos, 8), false, 0.9)
+	sfx(SFX.gong, 1.4, anchorPart(pos, 8), false, 0.8)
+	sfx(SFX.impactExp, 1.3, anchorPart(pos, 8), false, 1)
+	flash(pos, 1, m)
+	shake(0.7, 2 * sq)
+	for _, p in ipairs(parts) do tweenKill(p, 0.3, { Transparency = 1 }) end
+	local dome = ballPart(pos, 4, WHITE, 0.2)
+	tweenKill(dome, 0.7, { Size = Vector3.one * 130 * sq, Transparency = 1 }, ES.Quad, ED.Out)
+	local dome2 = ballPart(pos, 4, pal[1], 0.5, { Material = Enum.Material.ForceField })
+	tweenKill(dome2, 0.9, { Size = Vector3.one * 170 * sq, Transparency = 1 }, ES.Quad, ED.Out)
+	local gpos = groundAt(pos, params)
+	for i = 1, 4 do shockwave(gpos, 60 * sq * (1 + i * 0.3), 0.7, i * 0.06, pal[i % 3 + 1]) end
+	for i = 1, 24 do
+		local ray = fxPart({ Color = i % 2 == 0 and WHITE or pal[1], Size = V3(0.8 * sq, 0.8 * sq, 60 * sq), CFrame = CFrame.lookAt(pos, pos + V3(rf(-1, 1), rf(-1, 1), rf(-1, 1))) })
+		tweenKill(ray, 0.5, { Size = V3(0.1, 0.1, 140 * sq), Transparency = 1 })
 	end
-	physBlast(target, R, m.scale * 0.5)
+	for model, s in pairs(impaled) do
+		local n = s.n
+		if model.Parent and n.hum.Parent and n.hum.Health > 0 then
+			hurtFrac(n, m.big and 0.4 or 0.28)
+			launch(n, flatDir(flat(n.root.Position - pos)) * 170 + V3(0, 140, 0), 1.4)
+		end
+	end
+	for r2 in pairs(ownedImp) do
+		if r2.Parent and not r2.Anchored then
+			kick(r2, (r2.Position - pos).Unit * 190 + V3(0, 80, 0), randomSpin(16))
+		end
+	end
+	for _, n in ipairs(npcsIn(pos, 60 * sq)) do
+		if not impaled[n.model] then
+			hurtFrac(n, 0.15)
+			launch(n, flatDir(flat(n.root.Position - pos)) * 110 + V3(0, 100, 0), 1)
+		end
+	end
+	physBlast(pos, 70 * sq, m.scale)
 end
 
--- AZURE: Sword Prison. Giant blue swords rain down in a ring around every NPC (up to 5, or 14 when Destructive),
--- locking each one in a floating cage; the cage squeezes shut and detonates.
 SECOND.azure = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -3110,7 +3097,6 @@ SECOND.azure = function(ctx)
 				end
 				task.wait(0.4)
 
-				-- the prison: a glass bubble, the NPC floats in it and bleeds
 				local bubble = ballPart(center, 4, pal[1], 0.75, { Material = Enum.Material.ForceField })
 				tw(bubble, 0.35, { Size = Vector3.one * ringR * 1.7 }, ES.Back)
 				local floatY = 8 * sq
@@ -3131,7 +3117,6 @@ SECOND.azure = function(ctx)
 					end
 				end
 
-				-- squeeze + detonate
 				for _, sw in ipairs(swords) do
 					local pos = sw.gp:Lerp(ground, 0.85) + V3(0, 12 * sq, 0)
 					tw(sw.p, 0.3, { Position = pos }, ES.Quad, ED.In)
@@ -3157,7 +3142,7 @@ SECOND.azure = function(ctx)
 				end
 			end)
 			if not ok then warn("[IvoryPeriastron] sword prison: " .. tostring(err)) end
-			done += 1
+			done = done + (1)
 		end)
 	end
 	local t0 = os.clock()
@@ -3165,98 +3150,98 @@ SECOND.azure = function(ctx)
 	shake(0.4, 1.2)
 end
 
--- CHARTREUSE: Green Laser. A huge piercing beam that follows your aim for 1.8 s and burns everything along it
-local function beamEnd(origin, dir, range, character)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local ignore = { debrisFolder, character }
-	params.FilterDescendantsInstances = ignore
-	local pos, remain = origin, range
-	for _ = 1, 6 do
-		local hit = workspace:Raycast(pos, dir * remain, params)
-		if not hit then return pos + dir * remain end
-		local model = hit.Instance:FindFirstAncestorOfClass("Model")
-		if model and model:FindFirstChildOfClass("Humanoid") then -- NPCs do not stop the beam
-			ignore[#ignore + 1] = model
-			params.FilterDescendantsInstances = ignore
-			remain -= (hit.Position - pos).Magnitude
-			pos = hit.Position
-			if remain < 1 then return pos end
-		else
-			return hit.Position
-		end
-	end
-	return pos + dir * remain
-end
-
 SECOND.chartreuse = function(ctx)
-	local m, root, character = ctx.m, ctx.root, ctx.character
+	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local DUR, CHARGE = 1.8, 0.45
-	local RANGE = maxRange()
-	local W = 3.2 * sq
-	local snd = sfx(SFX.energyCharge, 1.2, root, false, 1.2)
-	local beamSnd
+	local params = rayParams(character)
+	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 80)
+	local fwd = flat(aim - root.Position)
+	fwd = fwd.Magnitude > 3 and fwd.Unit or flatDir(flat(root.CFrame.LookVector))
+	local reach = math.min(flat(aim - root.Position).Magnitude, m.big and 160 or 90)
 
-	local flare = ballPart(tipPos(character, root), 1, pal[1], 0.2)
-	tw(flare, CHARGE, { Size = Vector3.one * 5 * sq })
-	local t0 = os.clock()
-	while os.clock() - t0 < CHARGE and root.Parent do
-		RunService.Heartbeat:Wait()
-		flare.CFrame = CFrame.new(tipPos(character, root))
-	end
-	stopSfx(snd, 0.1)
-	if not root.Parent then flare:Destroy() return end
-
-	local outer = fxPart({ Shape = Enum.PartType.Cylinder, Color = pal[2], Transparency = 0.25, Size = V3(1, W, W) })
-	local inner = fxPart({ Shape = Enum.PartType.Cylinder, Color = WHITE, Transparency = 0.02, Size = V3(1, W * 0.4, W * 0.4) })
-	local endBall = ballPart(root.Position, 6 * sq, pal[1], 0.2)
+	sfx(SFX.energyCharge, 1.2, root, false, 1.4)
+	sfx(SFX.whooshBoom, 1.2, root, false, 1)
 	flash(root.Position, 0.4, m)
-	shake(DUR, 0.5 * sq)
+	shockwave(root.Position - V3(0, 2.5, 0), 20 * sq, 0.5, 0, pal[1])
+	local orb = ballPart(root.Position, 14 * sq, pal[1], 0.5)
+	local orb2 = ballPart(root.Position, 8 * sq, WHITE, 0.2)
+	local a0 = make("Attachment", { Position = V3(0, 6 * sq, 0) }, orb)
+	local a1 = make("Attachment", { Position = V3(0, -6 * sq, 0) }, orb)
+	make("Trail", { Attachment0 = a0, Attachment1 = a1, Lifetime = 0.7, LightEmission = 1, FaceCamera = true, Color = ColorSequence.new(pal[1], pal[3]), Transparency = NumberSequence.new(0.1, 1) }, orb)
+	Debris:AddItem(orb, 8)
+	Debris:AddItem(orb2, 8)
 
-	beamSnd = sfx(SFX.laserBeam, 1.3, root, true)
-	local lastTick, lastFx = 0, 0
-	t0 = os.clock()
-	while os.clock() - t0 < DUR and root.Parent do
-		RunService.Heartbeat:Wait()
-		local origin = tipPos(character, root)
-		local aim = aimPoint() or (origin + root.CFrame.LookVector * 100)
-		local dir = (aim - origin)
-		dir = dir.Magnitude > 0.1 and dir.Unit or root.CFrame.LookVector
-		local endPos = beamEnd(origin, dir, RANGE, character)
-		local len = (endPos - origin).Magnitude
-		local w = W * rf(0.9, 1.15)
-		local cf = CFrame.lookAt((origin + endPos) / 2, endPos) * CFrame.Angles(0, math.rad(90), 0)
-		outer.Size = V3(len, w, w)
-		outer.CFrame = cf
-		inner.Size = V3(len, w * 0.4, w * 0.4)
-		inner.CFrame = cf
-		flare.CFrame = CFrame.new(origin)
-		endBall.CFrame = CFrame.new(endPos)
-
-		if os.clock() - lastTick > 0.08 then
-			lastTick = os.clock()
-			for _, n in ipairs(npcsIn((origin + endPos) / 2, len / 2 + 10)) do
-				if segDist(n.root.Position, origin, endPos) < w * 2 + 3 then
-					hurt(n, 5)
-					launch(n, dir * 70 + V3(0, 30, 0), 0.4)
-				end
+	local ok, err = pcall(function()
+		root.AssemblyLinearVelocity = fwd * (reach / 1.4) + V3(0, 175, 0)
+		local t0, falling, landed = os.clock(), false, false
+		while os.clock() - t0 < 3 and root.Parent do
+			RunService.Heartbeat:Wait()
+			orb.CFrame = CFrame.new(root.Position)
+			orb2.CFrame = CFrame.new(root.Position)
+			local v = root.AssemblyLinearVelocity
+			if not falling and v.Y < 10 and os.clock() - t0 > 0.25 then
+				falling = true
+				sfx(SFX.psionic, 1, root, false, 1.3)
+			end
+			if falling then
+				root.AssemblyLinearVelocity = V3(v.X * 0.9, math.min(v.Y, -30) - 280 * 0.016 * 3, v.Z * 0.9) -- dive
+				local hit = workspace:Raycast(root.Position, V3(0, -6, 0), params)
+				if hit then landed = true break end
 			end
 		end
-		if os.clock() - lastFx > 0.15 then
-			lastFx = os.clock()
-			burst(anchorPart(endPos, 1), { "Stars" })
-			shockwave(endPos, 6 * sq, 0.3, 0, pal[1])
-			sfx(SFX.impactExp, 0.45, anchorPart(endPos, 3), false, rf(1.1, 1.6))
-			for _, r2 in ipairs(ownedRoots(endPos, 30 * sq)) do kick(r2, dir * 120 + V3(0, 70, 0), randomSpin(10)) end
+	end)
+	if not ok then warn("[IvoryPeriastron] gamma smash leap: " .. tostring(err)) end
+	tweenKill(orb, 0.3, { Transparency = 1 })
+	tweenKill(orb2, 0.3, { Transparency = 1 })
+
+	local c = groundAt(root.Position, params)
+	sfx(SFX.explosion, 1.7, anchorPart(c, 8), false, 0.8)
+	sfx(SFX.thunderBoom, 1.4, anchorPart(c, 8), false, 0.9)
+	sfx(SFX.impactExp, 1.4, anchorPart(c, 8), false, 0.7)
+	flash(c, 1, m)
+	shake(1.1, 3 * sq)
+	fovPunch(12, 0.8)
+	local R = 85 * sq
+	for i = 1, 5 do shockwave(c, R * (0.3 + i * 0.2), 0.8, (i - 1) * 0.07, pal[i % 3 + 1]) end
+	pillar(c, 18 * sq, pal[1], 0.2, 1.3)
+	pillar(c, 8 * sq, WHITE, 0.05, 1)
+	scorch(c, R * 0.7, m)
+	cracks(c, R, m, m.big and 40 or 28)
+	flingGround(c, R * 0.7, m.scale * 1.2)
+	burst(anchorPart(c + V3(0, 3, 0)), { "Rays_Thick", "Supernova", "Stars", "Stardust" })
+
+	for _, n in ipairs(npcsIn(c, R)) do
+		local d = flat(n.root.Position - c).Magnitude
+		local near = 1 - math.clamp(d / R, 0, 1)
+		hurtFrac(n, 0.15 + 0.35 * near)
+		if d < R * 0.3 then
+			launch(n, V3(rf(-20, 20), 260, rf(-20, 20)), 1.6) -- straight up out of the crater
+		else
+			launch(n, flatDir(flat(n.root.Position - c)) * (160 + 100 * near) + V3(0, 90 + 80 * near, 0), 1.2)
 		end
 	end
-	stopSfx(beamSnd, 0.25)
-	for _, p in ipairs({ outer, inner, endBall, flare }) do tweenKill(p, 0.25, { Transparency = 1 }) end
+	physBlast(c, R, m.scale * 1.4)
+
+	for w = 1, 3 do
+		task.wait(0.35)
+		local rr = R * (0.8 + w * 0.5)
+		sfx(SFX.psionic, 0.9, anchorPart(c, 5), false, 0.7 + w * 0.15)
+		shake(0.35, 1.2 * sq)
+		for i = 1, 2 do shockwave(c, rr, 0.6, i * 0.06, pal[(w + i) % 3 + 1]) end
+		cracks(c, rr * 0.8, m, 14)
+		for _, n in ipairs(npcsIn(c, rr)) do
+			if flat(n.root.Position - c).Magnitude > rr * 0.55 then
+				hurt(n, m.big and 9 or 7)
+				launch(n, V3(rf(-30, 30), 120, rf(-30, 30)), 0.8)
+			end
+		end
+		for _, r2 in ipairs(ownedRoots(c, rr)) do
+			if flat(r2.Position - c).Magnitude > rr * 0.55 then kick(r2, V3(rf(-40, 40), 110, rf(-40, 40)), randomSpin(12)) end
+		end
+	end
 end
 
--- AMETHYST: Meteoroids. For 8 seconds small meteoroids rain down and seek out NPCs
 SECOND.amethyst = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -3276,7 +3261,7 @@ SECOND.amethyst = function(ctx)
 			npcs = npcsIn(root.Position, maxRange())
 		end
 		for _ = 1, (m.big and 3 or 1) do
-			idx += 1
+			idx = idx + (1)
 			local npc = #npcs > 0 and npcs[rand(#npcs)] or nil
 			local ang, r = rand() * TAU, 70 * sq * math.sqrt(rand())
 			local fb = center + V3(math.cos(ang) * r, 1, math.sin(ang) * r)
@@ -3289,7 +3274,6 @@ SECOND.amethyst = function(ctx)
 	skyOff(1.2)
 end
 
--- CRIMSON: Crescent Wave. Piercing crescents of red light cut forward, one after another
 SECOND.crimson = function(ctx)
 	local m, root = ctx.m, ctx.root
 	local origin = root.Position
@@ -3308,7 +3292,6 @@ SECOND.crimson = function(ctx)
 	task.wait(1.1)
 end
 
--- GRIMGOLD: Echo Strike. Every NPC in range is locked on, then a golden lance falls on each one
 SECOND.grimgold = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -3375,11 +3358,9 @@ local function useJudge()
 	lastJudge = os.clock()
 end
 
----------------------------------------------------------------- Sword swing (click / tap) with a real swing animation
 local SWING_COOLDOWN = 0.45
 local lastSwing = -math.huge
 
--- fallback when the game has no default Animate script: swing the right arm by hand
 local function manualSwing(character, hum)
 	local r15 = hum.RigType == Enum.HumanoidRigType.R15
 	local motor
@@ -3409,8 +3390,6 @@ local function swing(tool)
 	local sq = math.sqrt(m.scale)
 	sfx(SFX.swing, 0.9, root, false, rf(0.95, 1.1))
 
-	-- the default Animate script plays its slash animation when a "toolanim" value appears in the tool and
-	-- deletes the value; if it is still there shortly after, nothing handled it and we animate the arm ourselves
 	local tag = Instance.new("StringValue")
 	tag.Name = "toolanim"
 	tag.Value = "Slash"
@@ -3429,7 +3408,6 @@ local function swing(tool)
 		task.delay(0.4, function() if trail.Parent then trail.Enabled = false end end)
 	end
 
-	-- the cut: a small crescent + damage in front of you at the moment the arm comes down
 	task.delay(0.12, function()
 		if not root.Parent then return end
 		local look = flatDir(flat(root.CFrame.LookVector))
@@ -3445,7 +3423,6 @@ local function swing(tool)
 	end)
 end
 
----------------------------------------------------------------- Ability 5 (G): the THIRD ability of every Periastron
 local ULT = {}
 local ulting = false
 local lastUlt = -math.huge
@@ -3457,8 +3434,6 @@ local function nearestFirst(list, pos)
 	return list
 end
 
--- NOIR: Shadow Tendrils. Thick black tendrils burst out of the ground under you, snake across the map to every
--- NPC in range, hoist them (and any owned parts around them) high into the air, then slam them down.
 ULT.noir = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -3534,7 +3509,6 @@ ULT.noir = function(ctx)
 					workspace:BulkMoveTo(balls, cfs, Enum.BulkMoveMode.FireCFrameChanged)
 				end
 
-				-- slam
 				if n.hum.Parent and n.hum.Health > 0 then
 					hurtFrac(n, m.big and 0.42 or 0.33)
 					launch(n, V3(rf(-20, 20), -280, rf(-20, 20)), 1.2)
@@ -3549,7 +3523,7 @@ ULT.noir = function(ctx)
 				for _, b in ipairs(balls) do tweenKill(b, 0.3, { Transparency = 1, Size = Vector3.one * 0.5 }) end
 			end)
 			if not ok then warn("[IvoryPeriastron] tendrils: " .. tostring(err)) end
-			done += 1
+			done = done + (1)
 		end)
 	end
 	local t0 = os.clock()
@@ -3557,96 +3531,133 @@ ULT.noir = function(ctx)
 	skyOff(1.2)
 end
 
--- IVORY: Seraph Wings. Wings of light unfold behind you and beat three times; each beat throws a cone of wind that
--- hurls NPCs back, shreds owned parts forward, and showers feathers. The last beat is huge.
 ULT.ivory = function(ctx)
 	local m, root, hum = ctx.m, ctx.root, ctx.hum
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local F = 8 -- feathers per wing
-	local feathers = {}
-	for side = -1, 1, 2 do
-		for i = 1, F do
-			local L = (15 - i * 1.15) * sq
-			local p = fxPart({ Color = i % 2 == 0 and WHITE or pal[1], Transparency = 0.15, Size = V3(L, 0.35, 2.2 * sq) })
-			feathers[#feathers + 1] = { p = p, side = side, i = i, L = L }
-			Debris:AddItem(p, 9)
-		end
-	end
-	local parts, cfs = {}, {}
-	for k, f in ipairs(feathers) do parts[k] = f.p end
-	sfx(SFX.magicCast, 1.2, root, false, 1.2)
-	flash(root.Position, 0.4, m)
+	local ARMS = m.big and 9 or 5
+	local DUR = m.big and 6.5 or 5
+	local MAXR = (m.big and 260 or 150) * sq
+	local FSPEED = 150
+	local center0 = root.Position
+	local GOLDC = Color3.fromRGB(255, 220, 120)
 
-	local BEATS = 3
-	local BEAT = 0.8
-	local total = BEATS * BEAT + 0.6
-	local t0 = os.clock()
-	local lastBeat = 0
-	local oldJump = hum.JumpPower
-	local function gust(power, big)
-		local look = flatDir(flat(root.CFrame.LookVector))
-		local c = root.Position
-		local reach = (big and 190 or 120) * sq
-		sfx(SFX.whooshBoom, 1.3, root, false, big and 0.8 or 1)
-		sfx(SFX.thunderStrike, 0.7, root, false, big and 0.9 or 1.3)
-		shake(0.3, 0.9 * sq)
-		for i = 1, 4 do
-			shockwave(c + look * (i * reach / 5) - V3(0, 2.5, 0), 18 * sq + i * 5, 0.5, i * 0.04, pal[i % 3 + 1])
-		end
-		-- feather shower
-		for i = 1, big and 40 or 20 do
-			local fp = fxPart({ Color = i % 2 == 0 and WHITE or pal[1], Transparency = 0.1, Size = V3(0.6, 0.15, 3 * sq) })
-			local a = rf(-0.6, 0.6)
-			local dirv = (look * math.cos(a) + look:Cross(Vector3.yAxis) * math.sin(a))
-			fp.CFrame = CFrame.lookAt(c + V3(0, 3, 0), c + V3(0, 3, 0) + dirv)
-			tweenKill(fp, 0.9, { Position = c + V3(0, rf(0, 14), 0) + dirv * rf(30, reach), Transparency = 1 }, ES.Quad, ED.Out, 1)
-		end
-		for _, n in ipairs(npcsIn(c + look * reach * 0.5, reach * 0.65)) do
-			local off = flat(n.root.Position - c)
-			if off.Magnitude > 1 and off.Unit:Dot(look) > 0.35 then
-				hurtFrac(n, power)
-				launch(n, look * (200 + 140 * (big and 1 or 0)) + V3(0, 90, 0), 1.3)
-				burst(anchorPart(n.root.Position, 2), { "Stars" })
-			end
-		end
-		for _, r2 in ipairs(ownedRoots(c + look * reach * 0.5, reach * 0.65)) do
-			local off = flat(r2.Position - c)
-			if off.Magnitude > 1 and off.Unit:Dot(look) > 0.35 then
-				kick(r2, look * (170 + 120 * (big and 1 or 0)) + V3(0, 60, 0), randomSpin(14))
-			end
-		end
+	sfx(SFX.magicCast, 1.4, root, false, 0.9)
+	sfx(SFX.gong, 1.2, root, false, 0.9)
+	flash(center0, 0.6, m)
+	shake(0.6, 1 * sq)
+	local halo = {}
+	for i = 1, 3 do
+		halo[i] = disc(center0, 2, 0.8, i == 2 and WHITE or pal[1], 0.15)
+		tw(halo[i], 0.6, { Size = V3(0.8, (14 + i * 7) * sq, (14 + i * 7) * sq) }, ES.Back)
+		Debris:AddItem(halo[i], DUR + 4)
 	end
+	local windSnd = sfx(SFX.windLoop, 1.1, root, true, 1.1)
 
-	local beat = 0
-	while os.clock() - t0 < total and root.Parent and hum.Health > 0 do
-		RunService.Heartbeat:Wait()
+	local feathers, fpos, fcf = {}, {}, {}
+	local parts = {}
+	local nextEmit, emitAngle = 0, 0
+	local npcList, ownedList = {}, {}
+	local cd = {}
+	local t0, lastScan, lastHit, lastBling = os.clock(), -1, 0, 0
+	while os.clock() - t0 < DUR and root.Parent do
+		local dt = RunService.Heartbeat:Wait()
 		local t = os.clock() - t0
-		local unfold = math.min(t / 0.35, 1)
-		-- flap angle: raised -> slammed down, once per BEAT
-		local ph = (t % BEAT) / BEAT
-		local flap = (0.95 - 1.5 * math.sin(math.min(ph / 0.45, 1) * math.pi / 2)) + (ph > 0.45 and (ph - 0.45) * 1.2 or 0)
-		flap *= unfold
-		local base = root.CFrame * CFrame.new(0, 1.6, 1.3)
-		for k, f in ipairs(feathers) do
-			local fan = (f.i - 1) * 0.24 * unfold
-			local cf = base * CFrame.new(f.side * 0.6, 0, 0) * CFrame.Angles(0, f.side * (-0.4 - fan), f.side * -flap) * CFrame.new(f.side * f.L / 2, 0, 0)
-			cfs[k] = cf
+		local c = root.Position
+		for i, h in ipairs(halo) do
+			h.CFrame = CFrame.new(c + V3(0, 1 + i * 1.2, 0)) * CFrame.Angles(0, t * (i % 2 == 0 and 3 or -3), math.rad(90))
 		end
-		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
-		-- a beat lands when the wing slams down (ph just passed 0.45)
-		local idx = math.floor(t / BEAT) + 1
-		if idx <= BEATS and idx > beat and ph > 0.45 then
-			beat = idx
-			gust(idx == BEATS and 0.3 or 0.12, idx == BEATS)
+
+		nextEmit = nextEmit - (dt)
+		local spinRate = 3 + 2 * (t / DUR)
+		emitAngle = emitAngle + (dt * spinRate)
+		while nextEmit <= 0 do
+			nextEmit = nextEmit + (0.055)
+			for a = 1, ARMS do
+				local ang = emitAngle + a / ARMS * TAU
+				local dirv = V3(math.cos(ang), 0, math.sin(ang))
+				local p = fxPart({ Color = (a + #feathers) % 2 == 0 and WHITE or GOLDC, Transparency = 0.1, Size = V3(0.9 * sq, 0.3 * sq, 7 * sq) })
+				feathers[#feathers + 1] = { p = p, pos = c + V3(0, 2, 0) + dirv * 6, dir = dirv, dist = 0, c = c }
+				parts[#parts + 1] = p
+			end
+		end
+
+		local alive = {}
+		local ps, cs = {}, {}
+		for _, f in ipairs(feathers) do
+			f.dist = f.dist + (FSPEED * dt)
+			if f.dist >= MAXR then
+				tweenKill(f.p, 0.15, { Transparency = 1 })
+			else
+				f.pos = f.pos + (f.dir * FSPEED * dt)
+				alive[#alive + 1] = f
+				ps[#ps + 1] = f.p
+				cs[#cs + 1] = CFrame.lookAt(f.pos, f.pos + f.dir)
+			end
+		end
+		feathers = alive
+		if #ps > 0 then workspace:BulkMoveTo(ps, cs, Enum.BulkMoveMode.FireCFrameChanged) end
+
+		if os.clock() - lastScan > 0.4 then
+			lastScan = os.clock()
+			npcList = npcsIn(c, MAXR)
+			ownedList = ownedRoots(c, MAXR)
+		end
+		if os.clock() - lastBling > 0.35 then
+			lastBling = os.clock()
+			sfx(SFX.bling, 0.45, anchorPart(c + V3(rf(-30, 30), rf(2, 20), rf(-30, 30)), 2), false, rf(0.8, 1.7))
+		end
+		if os.clock() - lastHit > 0.1 then
+			lastHit = os.clock()
+			for _, n in ipairs(npcList) do
+				if n.hum.Parent and n.hum.Health > 0 and n.root.Parent and (cd[n.model] or 0) < os.clock() then
+					local np = n.root.Position
+					for _, f in ipairs(feathers) do
+						if (f.pos - np).Magnitude < 8 * sq then
+							cd[n.model] = os.clock() + 0.22
+							local off = flat(np - c)
+							local tang = off.Magnitude > 1 and V3(-off.Unit.Z, 0, off.Unit.X) or f.dir
+							hurt(n, m.big and 4 or 3)
+							launch(n, tang * 85 + f.dir * 60 + V3(0, 35, 0), 0.5)
+							burst(anchorPart(np, 2), { "Stars" })
+							break
+						end
+					end
+				end
+			end
+			for _, r2 in ipairs(ownedList) do
+				if r2.Parent and not r2.Anchored and (cd[r2] or 0) < os.clock() then
+					local rp = r2.Position
+					for _, f in ipairs(feathers) do
+						if (f.pos - rp).Magnitude < 9 * sq then
+							cd[r2] = os.clock() + 0.25
+							local off = flat(rp - c)
+							local tang = off.Magnitude > 1 and V3(-off.Unit.Z, 0, off.Unit.X) or f.dir
+							kick(r2, tang * 110 + f.dir * 70 + V3(0, 40, 0), randomSpin(10))
+							break
+						end
+					end
+				end
+			end
 		end
 	end
-	for _, f in ipairs(feathers) do tweenKill(f.p, 0.4, { Transparency = 1 }) end
-	hum.JumpPower = oldJump
+
+	stopSfx(windSnd, 0.4)
+	local c = root.Position
+	sfx(SFX.explosion, 1.3, root, false, 1.1)
+	sfx(SFX.thunderBoom, 1.1, root, false, 1)
+	flash(c, 0.9, m)
+	shake(0.7, 1.8 * sq)
+	for i = 1, 6 do shockwave(c - V3(0, 2.5, 0), MAXR * 0.5 * (0.4 + i * 0.2), 0.8, i * 0.05, pal[i % 3 + 1]) end
+	for _, h in ipairs(halo) do tweenKill(h, 0.5, { Size = V3(0.8, MAXR * 0.6, MAXR * 0.6), Transparency = 1 }) end
+	for _, p in ipairs(parts) do if p.Parent then tweenKill(p, 0.3, { Transparency = 1 }) end end
+	for _, n in ipairs(npcsIn(c, MAXR * 0.6)) do
+		hurtFrac(n, m.big and 0.3 or 0.2)
+		launch(n, flatDir(flat(n.root.Position - c)) * 190 + V3(0, 110, 0), 1.4)
+	end
+	physBlast(c, MAXR * 0.6, m.scale)
 end
 
--- AZURE: Chrono Rupture. Time STOPS: every NPC (and every owned part) in range is frozen in place inside a blue
--- clock field. Your hits keep landing as slash marks; when time resumes everything receives all of it at once.
 ULT.azure = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
@@ -3659,7 +3670,6 @@ ULT.azure = function(ctx)
 	skyOn(0.6, pal[2], 0.3)
 	shake(0.4, 1)
 
-	-- the clock: a big disc with 12 ticks and 2 hands, centred on you
 	local c0 = root.Position - V3(0, 2.6, 0)
 	local face = disc(c0, 2, 0.3, pal[1], 0.7)
 	tw(face, 0.4, { Size = V3(0.3, 90 * sq, 90 * sq) }, ES.Back)
@@ -3676,7 +3686,6 @@ ULT.azure = function(ctx)
 	Debris:AddItem(hand1, STOP + 3)
 	Debris:AddItem(hand2, STOP + 3)
 
-	-- freeze everything
 	local frozen, owned, saved = {}, {}, {}
 	for _, n in ipairs(list) do
 		frozen[#frozen + 1] = { n = n, hits = 0, v = V3(0, 0, 0) }
@@ -3724,8 +3733,8 @@ ULT.azure = function(ctx)
 					local sl = fxPart({ Color = rand() < 0.5 and WHITE or pal[1], Size = V3(0.3, 0.3, 14 * sq), CFrame = CFrame.lookAt(p, p + dirv) })
 					Debris:AddItem(sl, STOP + 2) -- the cut stays hanging in the air until time resumes
 					tw(sl, 0.15, { Size = V3(0.25, 0.25, 22 * sq) })
-					f.hits += 1
-					f.v += dirv.Unit * 18
+					f.hits = f.hits + (1)
+					f.v = f.v + (dirv.Unit * 18)
 					if rand() < 0.3 then sfx(SFX.swordSlash, 0.3, anchorPart(p, 2), false, rf(1.3, 1.8)) end
 				end
 			end
@@ -3733,7 +3742,6 @@ ULT.azure = function(ctx)
 	end)
 	if not ok then warn("[IvoryPeriastron] chrono: " .. tostring(err)) end
 
-	-- time resumes
 	for _, p in ipairs(saved) do if p.Parent then p.Anchored = false end end
 	skyOff(1)
 	sfx(SFX.thunderBoom, 1.3, root, false, 1.2)
@@ -3761,132 +3769,142 @@ ULT.azure = function(ctx)
 	for _, p in ipairs({ face, hand1, hand2 }) do tweenKill(p, 0.4, { Transparency = 1 }) end
 end
 
--- CHARTREUSE: Gamma Cyclone. A toxic green tornado tears forward along your aim, sucking NPCs and owned parts into
--- its spiral, lifting them high while they orbit, and finally hurling everything out sideways.
 ULT.chartreuse = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
 	local sq = math.sqrt(m.scale)
-	local R = 34 * sq
-	local H = 100 * sq
-	local SPEED = m.big and 75 or 45
-	local DUR = m.big and 8 or 6
-	local look = flatDir(flat((ctx.aim - root.Position)))
+	local target = groundTarget(ctx.aim, root, character)
 	local params = rayParams(character)
-	local pos = root.Position + look * (R + 10)
+	local COUNT = m.big and 10 or 6
+	local DUR = m.big and 7 or 5.5
+	local CAPR = 17 * sq -- cap radius
+	local STEM = 15 * sq
 
-	sfx(SFX.energyCharge, 1.1, root, false, 1.1)
-	local wind = sfx(SFX.windLoop, 1.5, anchorPart(pos, DUR + 3), true, 0.9)
-	flash(root.Position, 0.4, m)
+	sfx(SFX.energyCharge, 1.1, root, false, 1.2)
+	sfx(SFX.magicCaster, 1.2, anchorPart(target, 6), false, 1.2)
+	skyOn(0.25, pal[3], 0.5)
+	flash(target, 0.5, m)
 
-	local B = m.big and 110 or 80
-	local blocks, bs, cfs = {}, {}, {}
-	for i = 1, B do
-		local h = rand()
-		local blk = fxPart({
-			Color = pick(m, i), Transparency = rf(0.1, 0.45),
-			Size = V3(rf(1.5, 3) * sq, 0.5, rf(5, 11) * sq),
+	local shrooms = {}
+	for i = 1, COUNT do
+		local a = i / COUNT * TAU + rf(-0.2, 0.2)
+		local rr = (i == 1) and 0 or rf(28, 62) * sq
+		local gp = groundAt(target + V3(math.cos(a) * rr, 0, math.sin(a) * rr), params)
+		local size = (i == 1) and 1.5 or rf(0.8, 1.2)
+		local stem = fxPart({
+			Shape = Enum.PartType.Cylinder, Color = Color3.fromRGB(235, 245, 200), Material = Enum.Material.SmoothPlastic,
+			Size = V3(1, 1, 1), CFrame = CFrame.new(gp) * CFrame.Angles(0, 0, math.rad(90)),
 		})
-		blocks[i] = blk
-		bs[i] = { a = rand() * TAU, h = h, spd = rf(0.8, 1.3) }
-		Debris:AddItem(blk, DUR + 3)
-	end
-	local core = fxPart({ Shape = Enum.PartType.Cylinder, Color = pal[3], Transparency = 0.6, Size = V3(H, R * 0.5, R * 0.5) })
-	Debris:AddItem(core, DUR + 3)
-
-	local tracked, ownedMap = {}, {}
-	local t0, lastScan, lastDot = os.clock(), 0, 0
-	local groundY = groundAt(pos, params).Y
-	while os.clock() - t0 < DUR and root.Parent do
-		local dt = RunService.Heartbeat:Wait()
-		local t = os.clock() - t0
-		pos += look * SPEED * dt
-		groundY += (groundAt(pos, params).Y - groundY) * math.min(1, dt * 6)
-		local c = V3(pos.X, groundY, pos.Z)
-		wind.Parent.Position = c + V3(0, 10, 0)
-
-		for i, b in ipairs(bs) do
-			b.a += dt * (4.5 - 2.5 * b.h) * b.spd
-			local rr = R * (0.2 + 0.85 * b.h)
-			local p = c + V3(math.cos(b.a) * rr, b.h * H, math.sin(b.a) * rr)
-			local tang = V3(-math.sin(b.a), 0, math.cos(b.a))
-			cfs[i] = CFrame.lookAt(p, p + tang)
+		local cap = fxPart({
+			Shape = Enum.PartType.Ball, Color = pick(m, i), Material = NEON, Transparency = 0.1, Size = V3(1, 1, 1), CFrame = CFrame.new(gp),
+		})
+		local spots = {}
+		for s = 1, 5 do
+			spots[s] = fxPart({ Shape = Enum.PartType.Ball, Color = WHITE, Size = V3(1, 1, 1), CFrame = CFrame.new(gp), Transparency = 0.1 })
 		end
-		workspace:BulkMoveTo(blocks, cfs, Enum.BulkMoveMode.FireCFrameChanged)
-		core.CFrame = CFrame.new(c + V3(0, H / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		make("ParticleEmitter", {
+			Color = ColorSequence.new(pal[1], pal[2]), Rate = 25, Lifetime = NumberRange.new(1.2, 2.2), Speed = NumberRange.new(4, 10),
+			SpreadAngle = Vector2.new(180, 180), LightEmission = 0.8, Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5 * sq), NumberSequenceKeypoint.new(1, 0) }),
+			Transparency = NumberSequence.new(0.3, 1),
+		}, cap)
+		local sh = { stem = stem, cap = cap, spots = spots, gp = gp, size = size, a = a, cd = {} }
+		shrooms[i] = sh
+		for _, p in ipairs({ stem, cap, table.unpack(spots) }) do Debris:AddItem(p, DUR + 5) end
+		task.delay(i * 0.07, function()
+			shockwave(gp, 20 * sq * size, 0.5, 0, pick(m, i))
+			burst(anchorPart(gp + V3(0, 2, 0), 2), { "Stars", "Rays_Thick" })
+			if i <= 3 then sfx(SFX.bling, 0.8, anchorPart(gp, 3), false, rf(0.5, 0.8)) end
+			tw(stem, 0.4, { Size = V3(STEM * size, 4.5 * sq * size, 4.5 * sq * size), CFrame = CFrame.new(gp + V3(0, STEM * size / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)) }, ES.Back)
+			tw(cap, 0.4, { Size = V3(CAPR * 2 * size, CAPR * 1.1 * size, CAPR * 2 * size), CFrame = CFrame.new(gp + V3(0, STEM * size, 0)) }, ES.Back)
+			for s, sp in ipairs(spots) do
+				local ang = s / #spots * TAU
+				tw(sp, 0.4, { Size = Vector3.one * 3.2 * sq * size, Position = gp + V3(math.cos(ang) * CAPR * 0.6 * size, STEM * size + CAPR * 0.45 * size, math.sin(ang) * CAPR * 0.6 * size) }, ES.Back)
+			end
+		end)
+	end
+	task.wait(0.8)
 
-		if os.clock() - lastScan > 0.25 then
+	local t0, lastPoison = os.clock(), 0
+	local npcList, ownedList, lastScan = {}, {}, -1
+	while os.clock() - t0 < DUR and root.Parent do
+		RunService.Heartbeat:Wait()
+		local t = os.clock() - t0
+		if os.clock() - lastScan > 0.2 then
 			lastScan = os.clock()
-			for _, n in ipairs(npcsIn(c + V3(0, H * 0.4, 0), R * 1.6 + 8)) do
-				if not tracked[n.model] and flat(n.root.Position - c).Magnitude < R * 1.4 then
-					local off = flat(n.root.Position - c)
-					tracked[n.model] = { n = n, a = math.atan2(off.Z, off.X), r = math.clamp(off.Magnitude, 4, R), y = math.max(n.root.Position.Y - groundY, 0), w = rf(0.8, 1.2) }
-					n.hum.PlatformStand = true
-					for _, p in ipairs(n.model:GetDescendants()) do
-						if p:IsA("BasePart") and p.Anchored then p.Anchored = false end
+			npcList = npcsIn(target, 110 * sq)
+			ownedList = ownedRoots(target, 110 * sq)
+		end
+		for _, sh in ipairs(shrooms) do
+			local top = sh.gp + V3(0, STEM * sh.size + CAPR * 0.55 * sh.size, 0)
+			local bob = 1 + 0.05 * math.sin(t * 6 + sh.a)
+			sh.cap.Size = V3(CAPR * 2 * sh.size * bob, CAPR * 1.1 * sh.size / bob, CAPR * 2 * sh.size * bob)
+			for _, n in ipairs(npcList) do
+				if n.hum.Parent and n.hum.Health > 0 and (sh.cd[n.model] or 0) < os.clock() then
+					local off = n.root.Position - top
+					if flat(off).Magnitude < CAPR * sh.size and off.Y > -10 and off.Y < 14 then
+						sh.cd[n.model] = os.clock() + 0.75
+						launch(n, V3(rf(-25, 25), 170, rf(-25, 25)), 1)
+						hurt(n, 3)
+						shockwave(top - V3(0, CAPR * 0.5, 0), 14 * sq, 0.35, 0, pick(m, 2))
+						sfx(SFX.bling, 0.55, anchorPart(top, 2), false, rf(0.7, 1.3))
+						tw(sh.cap, 0.08, { Size = V3(CAPR * 2.3 * sh.size, CAPR * 0.7 * sh.size, CAPR * 2.3 * sh.size) })
 					end
 				end
 			end
-			local c_ = 0
-			for _, r2 in ipairs(ownedRoots(c + V3(0, H * 0.4, 0), R * 1.6 + 8)) do
-				if not ownedMap[r2] and flat(r2.Position - c).Magnitude < R * 1.4 and c_ < 60 then
-					c_ += 1
-					local off = flat(r2.Position - c)
-					ownedMap[r2] = { a = math.atan2(off.Z, off.X), r = math.clamp(off.Magnitude, 4, R), y = math.max(r2.Position.Y - groundY, 0), w = rf(0.8, 1.4) }
+			for _, r2 in ipairs(ownedList) do
+				if r2.Parent and not r2.Anchored and (sh.cd[r2] or 0) < os.clock() then
+					local off = r2.Position - top
+					if flat(off).Magnitude < CAPR * sh.size and off.Y > -10 and off.Y < 14 then
+						sh.cd[r2] = os.clock() + 0.6
+						kick(r2, V3(rf(-25, 25), 190, rf(-25, 25)), randomSpin(10))
+					end
 				end
 			end
 		end
-
-		local function swirl(r2, s)
-			s.a += dt * (3.2 + s.y / H * 2.5) * s.w
-			s.y = math.min(s.y + dt * (H * 0.3) * (0.7 + 0.5 * s.w), H * 0.9)
-			s.r += (R * (0.3 + 0.6 * s.y / H) - s.r) * math.min(1, dt * 2)
-			r2.CFrame = CFrame.new(c + V3(math.cos(s.a) * s.r, s.y, math.sin(s.a) * s.r)) * CFrame.Angles(s.a * 2, s.a, 0)
-			r2.AssemblyLinearVelocity = V3(0, 0, 0)
-			r2.AssemblyAngularVelocity = V3(0, 0, 0)
-		end
-		for model, s in pairs(tracked) do
-			if model.Parent and s.n.root.Parent and s.n.hum.Health > 0 then swirl(s.n.root, s) end
-		end
-		for r2, s in pairs(ownedMap) do
-			if r2.Parent and not r2.Anchored then swirl(r2, s) end
-		end
-		if os.clock() - lastDot > 0.4 then
-			lastDot = os.clock()
-			for _, s in pairs(tracked) do hurt(s.n, 3) end
-			burst(anchorPart(c + V3(0, rf(0, H), 0), 2), { "Stars" })
+		if os.clock() - lastPoison > 0.5 then
+			lastPoison = os.clock()
+			for _, n in ipairs(npcList) do
+				if n.hum.Parent and n.hum.Health > 0 then
+					local near = false
+					for _, sh in ipairs(shrooms) do
+						if (n.root.Position - sh.gp).Magnitude < 32 * sq then near = true break end
+					end
+					if near then
+						hurt(n, 2)
+						slowNpc(n, 0.45, 0.8)
+					end
+				end
+			end
 		end
 	end
 
-	-- release: everything is thrown outward along its orbit tangent
-	stopSfx(wind, 0.5)
-	sfx(SFX.thunderHuge, 1.2, anchorPart(pos, 5), false, 1.1)
-	sfx(SFX.stormBolt, 1.2, anchorPart(pos, 5), false, 0.9)
-	sfx(SFX.impactExp, 1, anchorPart(pos, 5), false, 0.9)
-	local c = V3(pos.X, groundY, pos.Z)
-	for i = 1, 3 do shockwave(c, R * (1 + i * 0.7), 0.6, i * 0.06, pal[i]) end
-	burst(anchorPart(c + V3(0, 10, 0), 2), { "Rays_Thick", "Stars", "Stardust" })
-	shake(0.6, 1.5 * sq)
-	for _, s in pairs(tracked) do
-		local n = s.n
-		if n.hum.Parent and n.root.Parent and n.hum.Health > 0 then
-			local tang = V3(-math.sin(s.a), 0, math.cos(s.a))
-			hurtFrac(n, m.big and 0.38 or 0.28)
-			launch(n, (tang + flatDir(flat(n.root.Position - c)) * 0.8) * 190 + V3(0, 60, 0), 1.5)
-		end
+	skyOff(1.2)
+	for i, sh in ipairs(shrooms) do
+		task.spawn(function()
+			task.wait((i - 1) * 0.12)
+			local top = sh.gp + V3(0, STEM * sh.size + CAPR * 0.4 * sh.size, 0)
+			tw(sh.cap, 0.25, { Size = Vector3.one * CAPR * 3 * sh.size }, ES.Quad, ED.Out)
+			task.wait(0.25)
+			sfx(SFX.explosion, i <= 3 and 1.1 or 0.5, anchorPart(top, 5), false, rf(0.9, 1.2))
+			sfx(SFX.bling, 0.8, anchorPart(top, 5), false, rf(0.4, 0.6))
+			shockwave(sh.gp, 34 * sq, 0.6, 0, pick(m, i))
+			burst(anchorPart(top, 2), { "Rays_Thick", "Supernova", "Stars", "Stardust" })
+			for k = 1, 8 do
+				local blob = ballPart(top, rf(2, 5) * sq, pick(m, k), 0.1)
+				tweenKill(blob, 0.8, { Position = top + V3(rf(-35, 35), rf(0, 30), rf(-35, 35)) * sq, Transparency = 1, Size = Vector3.one * 0.3 }, ES.Quad, ED.Out, 0.9)
+			end
+			for _, p in ipairs({ sh.stem, sh.cap, table.unpack(sh.spots) }) do tweenKill(p, 0.15, { Transparency = 1 }) end
+			for _, n in ipairs(npcsIn(top, 36 * sq)) do
+				hurtFrac(n, m.big and 0.22 or 0.15)
+				launch(n, flatDir(flat(n.root.Position - top)) * 90 + V3(0, 210, 0), 1.2)
+			end
+			physBlast(top, 36 * sq, m.scale * 0.7)
+			shake(0.3, 1 * sq)
+		end)
 	end
-	for r2, s in pairs(ownedMap) do
-		if r2.Parent and not r2.Anchored then
-			local tang = V3(-math.sin(s.a), 0, math.cos(s.a))
-			kick(r2, tang * 200 + V3(0, 60, 0), randomSpin(16))
-		end
-	end
-	for _, b in ipairs(blocks) do tweenKill(b, 0.4, { Transparency = 1 }) end
-	tweenKill(core, 0.4, { Transparency = 1 })
+	task.wait(#shrooms * 0.12 + 0.6)
 end
 
--- AMETHYST: Crystal Prism. A colossal crystal hangs over the target, charges, then fires rainbow prism beams that
--- sweep the ground like lighthouse lamps. Anything touched is scorched; owned parts are flung up. It shatters at the end.
 ULT.amethyst = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -3971,7 +3989,6 @@ ULT.amethyst = function(ctx)
 		end
 	end
 
-	-- shatter
 	stopSfx(beamSnd, 0.3)
 	skyOff(1.2)
 	sfx(SFX.glass, 1.5, anchorPart(center, 5), false, 0.9)
@@ -3995,8 +4012,6 @@ ULT.amethyst = function(ctx)
 	physBlast(target, 70 * sq, m.scale * 0.7)
 end
 
--- CRIMSON: Blood Moon. A red moon rises over the target and locks a beam onto every NPC near it: they are slowed,
--- lifted and drained (the blood flows back to you), then the moon pulses and slams them into the ground.
 ULT.crimson = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local pal = m.pal
@@ -4057,8 +4072,7 @@ ULT.crimson = function(ctx)
 				local n = mk.n
 				if n.hum.Parent and n.hum.Health > 0 and n.root.Parent then
 					hurt(n, 5)
-					healed += 1
-					-- a blood orb flies from the NPC to you
+					healed = healed + (1)
 					local orb = ballPart(n.root.Position, 1.6 * sq, pal[1], 0.1)
 					tweenKill(orb, 0.55, { Position = root.Position + V3(0, 2, 0), Size = Vector3.one * 0.3 }, ES.Quad, ED.In, 0.7)
 					if healed <= 3 then burst(anchorPart(n.root.Position, 2), { "Stars" }) end
@@ -4068,7 +4082,6 @@ ULT.crimson = function(ctx)
 		end
 	end
 
-	-- the moon collapses on them
 	stopSfx(snd, 0.4)
 	skyOff(1.5)
 	sfx(SFX.explosion2, 1.5, anchorPart(target, 6), false, 0.9)
@@ -4091,8 +4104,6 @@ ULT.crimson = function(ctx)
 	task.wait(0.3)
 end
 
--- GRIMGOLD: Midas Shatter. A wave of gold spreads from the target: every NPC (and owned part) it touches is turned
--- to solid frozen gold while gold coins rain down; then all of it shatters into gold shards.
 ULT.grimgold = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local pal = m.pal
@@ -4158,7 +4169,6 @@ ULT.grimgold = function(ctx)
 		end)
 	end
 
-	-- coins rain down over the whole area while everything is gold
 	local t0 = os.clock()
 	while os.clock() - t0 < HOLD and root.Parent do
 		task.wait(0.05)
@@ -4171,7 +4181,6 @@ ULT.grimgold = function(ctx)
 		end
 	end
 
-	-- SHATTER
 	sfx(SFX.glass, 1.5, anchorPart(target, 6), false, 0.8)
 	sfx(SFX.explosion2, 1.2, anchorPart(target, 6), false, 1.1)
 	shake(0.8, 2 * sq)
@@ -4208,373 +4217,795 @@ ULT.grimgold = function(ctx)
 	shockwave(target, R * 0.7, 0.8, 0, GOLD_C)
 end
 
----------------------------------------------------------------- RAINBOW PERIASTRON (the strongest style, 3 abilities of its own)
 local RB = {}
 function RB.hue(t, s, v) return Color3.fromHSV(t % 1, s or 0.7, v or 1) end
+RB.last = -math.huge
+RB.busy = false
 
--- Z - SPECTRUM CASCADE: seven colour waves roll out of the target one after another. Every colour does its OWN thing
--- to whatever it touches (NPCs and owned parts alike): red ignites + blasts out, orange floats up, yellow shocks and
--- freezes, green drags inward, blue slams down, indigo spins, violet pops everything skyward. Then the rainbow
--- core erupts out of the centre.
+function RB.drawT(balls, cfs, from, tip, t, phase, lift, idx, N, sq, ext)
+	local dir = tip - from
+	local side = dir:Cross(Vector3.yAxis)
+	side = side.Magnitude > 0.01 and side.Unit or V3(1, 0, 0)
+	local up2 = dir.Magnitude > 0.01 and side:Cross(dir.Unit) or V3(0, 1, 0)
+	for k = 1, N do
+		local f = k / N
+		local env = math.sin(f * math.pi)
+		local damp = 1 - lift * 0.5
+		local w1 = math.sin(f * 8 + t * 10 + phase) * 4 * sq * env * damp
+		local w2 = math.cos(f * 8 + t * 10 + phase) * 4 * sq * env * damp
+		local arc = math.sin(f * math.pi) * 5 * sq * (1 - lift)
+		local pos = from:Lerp(tip, f) + side * w1 + up2 * w2 + V3(0, arc, 0)
+		if ext and t < ext * f then pos = from end
+		cfs[k] = CFrame.new(pos)
+		balls[k].Color = RB.hue(f * 0.9 - t * 0.7 + idx * 0.13, 0.85, 1)
+	end
+	workspace:BulkMoveTo(balls, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+end
+
 NOVAS.rainbow = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local sq = math.sqrt(m.scale)
-	local R = 190 * sq
-	local target = groundTarget(ctx.aim, root, character)
+	local params = rayParams(character)
+	local range = maxRange()
+	local origin = root.Position
+	local ents = {}
+	local npcL = nearestFirst(npcsIn(origin, range), origin)
+	local ncap = m.big and 14 or 6
+	for i = 1, math.min(#npcL, ncap) do
+		ents[#ents + 1] = { n = npcL[i], root = npcL[i].root }
+	end
+	local partL = ownedRoots(origin, math.min(range, 450))
+	table.sort(partL, function(a, b) return (a.Position - origin).Magnitude < (b.Position - origin).Magnitude end)
+	local pcap = m.big and 18 or 8
+	for i = 1, math.min(#partL, pcap) do
+		ents[#ents + 1] = { root = partL[i] }
+	end
+	if #ents == 0 then
+		showToast("Chroma Tentacles: nothing in range", m.hi)
+		return
+	end
 
-	sfx(SFX.synthStart, 1.5, root) -- plays the instant you press the button
-	local stopOrbs = chargeOrbs(root, m, 0.8)
-	local tele = telegraph(target, 45 * sq, m, 0.8, 1.9)
-	task.wait(0.8)
-	stopOrbs()
-	tele.circle.lock()
+	local from = groundAt(origin, params)
+	sfx(SFX.synthStart, 1.5, root)
+	sfx(SFX.darkCharge, 1.1, root, false, 1.3)
+	skyOn(0.5, RB.hue(0.8, 0.6, 0.45), 0.5)
+	flash(origin, 0.5, m)
+	shake(0.6, 0.9 * sq)
+	for i = 1, 5 do shockwave(from, (14 + i * 7) * sq, 0.6, i * 0.06, RB.hue(i / 5, 0.85, 1)) end
+	burst(anchorPart(from + V3(0, 2, 0)), { "Core", "Stardust" })
 
-	task.spawn(function()
-		local ok, err = pcall(function()
-			task.wait(0.2)
-			tele.destroy()
-			skyOn(0.4, RB.hue(0.75, 0.6, 0.5), 0.6)
-			flash(target, 0.6, m)
-			shake(0.5, 1 * sq)
-
-			local STAGES, GAP, LIFE, N = 7, 0.55, 1.6, 40
-			local DMG = { 6, 5, 6, 5, 7, 5, 8 } -- % of max health per colour
-			local function vecFor(stage, pos)
-				local fl = flatDir(flat(pos - target))
-				local tang = V3(-fl.Z, 0, fl.X)
-				if stage == 1 then return fl * 170 + V3(0, 70, 0)
-				elseif stage == 2 then return V3(0, 100, 0)
-				elseif stage == 3 then return V3(0, 0, 0)
-				elseif stage == 4 then return -fl * 180 + V3(0, 25, 0)
-				elseif stage == 5 then return V3(0, -270, 0)
-				elseif stage == 6 then return tang * 160 + V3(0, 40, 0)
-				end
-				return V3(0, 230, 0) + fl * 30
-			end
-
-			local rings = {}
-			local hitN, hitO = {}, {}
-			for s = 1, STAGES do hitN[s], hitO[s] = {}, {} end
-			local t0, lastN, lastO = os.clock(), -1, -1
-			local npcList, ownedList = {}, {}
-			local total = (STAGES - 1) * GAP + LIFE
-			local H = 46 * sq
-			while os.clock() - t0 < total do
-				RunService.Heartbeat:Wait()
-				local t = os.clock() - t0
-
-				-- spawn the next colour wave
-				if #rings < STAGES and t >= #rings * GAP then
-					local s = #rings + 1
-					local col = RB.hue((s - 1) / 7, 0.85, 1)
-					local parts, cfs = {}, {}
+	local remaining = #ents
+	for idx, e in ipairs(ents) do
+		task.spawn(function()
+			local ok, err = pcall(function()
+				task.wait((idx - 1) * 0.05)
+				local er = e.root
+				local N = 22
+				local NT = idx <= 5 and 2 or 1
+				local sets = {}
+				for ti = 1, NT do
+					local balls = {}
 					for k = 1, N do
-						parts[k] = fxPart({ Color = col, Transparency = 0.15, Size = V3(7 * sq, H, 3 * sq), Position = target })
-						Debris:AddItem(parts[k], LIFE + 2)
+						local f = k / N
+						local size = (5.2 - 3.2 * f) * sq * (ti == 1 and 1 or 0.7)
+						balls[k] = ballPart(from, size, RB.hue(f + idx * 0.13, 0.85, 1), 0.05)
+						Debris:AddItem(balls[k], 14)
 					end
-					local base = disc(target + V3(0, 0.5, 0), 4, 0.5, col, 0.35)
-					Debris:AddItem(base, LIFE + 1)
-					rings[s] = { stage = s, born = os.clock(), parts = parts, cfs = cfs, col = col, base = base, dead = false }
-					sfx(SFX.bling, 0.9, anchorPart(target, 3), false, 0.7 + s * 0.12)
-					if s == 3 then sfx(SFX.stormBolt, 1.1, anchorPart(target, 3), false, 1) end
-					if s == 5 then sfx(SFX.psionic, 1.1, anchorPart(target, 3), false, 0.9) end
-					flash(target, 0.2, m)
-					shake(0.25, 0.7)
+					sets[ti] = { balls = balls, cfs = {} }
 				end
-
-				if os.clock() - lastN > 0.1 then
-					lastN = os.clock()
-					npcList = npcsIn(target, R + 20)
-				end
-				if os.clock() - lastO > 0.25 then
-					lastO = os.clock()
-					ownedList = ownedRoots(target, R + 20)
-				end
-
-				for s, rg in ipairs(rings) do
-					if not rg.dead then
-						local age = os.clock() - rg.born
-						local p = age / LIFE
-						if p >= 1 then
-							rg.dead = true
-							for _, pt in ipairs(rg.parts) do tweenKill(pt, 0.3, { Transparency = 1 }) end
-							tweenKill(rg.base, 0.3, { Transparency = 1 })
+				local pos0 = er.Position
+				local ground = groundAt(pos0, params)
+				local EXT, HOIST, WHIP, SL, NS = 0.45, 0.8, 1.1, 0.5, 3
+				local t1 = EXT
+				local t2 = EXT + HOIST
+				local t3 = t2 + WHIP
+				local total = t3 + NS * SL
+				local HI = 46 * sq
+				local R = 16 * sq
+				local gY = ground.Y + 4
+				local dmg = m.big and { 7, 9, 12 } or { 5, 6, 8 }
+				local grabbed = false
+				local slamDone = { false, false, false }
+				local t0 = os.clock()
+				while true do
+					RunService.Heartbeat:Wait()
+					local t = os.clock() - t0
+					if t >= total or not er.Parent then break end
+					local tip
+					if t < t1 then
+						tip = from:Lerp(pos0 + V3(0, 3, 0), t / EXT)
+					else
+						if not grabbed then
+							grabbed = true
+							if e.n then e.n.hum.PlatformStand = true end
+							shockwave(ground, 16 * sq, 0.4, 0, RB.hue(idx * 0.17, 0.85, 1))
+							if idx <= 3 then sfx(SFX.impactExp, 0.7, anchorPart(pos0, 3), false, rf(1.0, 1.3)) end
+						end
+						local x, y, z = pos0.X, gY, pos0.Z
+						if t < t2 then
+							local p = (t - t1) / HOIST
+							y = gY + HI * (1 - (1 - p) ^ 2)
+						elseif t < t3 then
+							local p = (t - t2) / WHIP
+							local rr = R * math.sin(p * math.pi)
+							local a = p * TAU * 2.5 + idx
+							x = pos0.X + math.cos(a) * rr
+							z = pos0.Z + math.sin(a) * rr
+							y = gY + HI + math.sin(p * 9) * 5 * sq
 						else
-							local rr = R * (1 - (1 - p) ^ 2) + 3
-							for k = 1, N do
-								local a = k / N * TAU + s * 0.4 + age * 0.6
-								local pos = target + V3(math.cos(a) * rr, H / 2 - 2, math.sin(a) * rr)
-								rg.cfs[k] = CFrame.new(pos) * CFrame.Angles(0, -a, 0)
+							local s = t - t3
+							local si = math.min(math.floor(s / SL) + 1, NS)
+							local ls = s - (si - 1) * SL
+							local startY = si == 1 and (gY + HI) or (gY + HI * 0.6)
+							if ls < 0.16 then
+								local q = ls / 0.16
+								y = startY + (gY - startY) * q * q
+							else
+								local q = (ls - 0.16) / (SL - 0.16)
+								y = gY + HI * 0.6 * (1 - (1 - q) ^ 2)
+								if not slamDone[si] then
+									slamDone[si] = true
+									shockwave(ground, 24 * sq, 0.45, 0, RB.hue(si / 3 + idx * 0.1, 0.85, 1))
+									shockwave(ground, 13 * sq, 0.4, 0.05, WHITE)
+									burst(anchorPart(ground + V3(0, 2, 0), 2), { "Stars", "Rays_Thick" })
+									physBlast(ground, 20 * sq, m.scale * 0.45)
+									if e.n and e.n.hum.Parent and e.n.hum.Health > 0 then hurt(e.n, dmg[si]) end
+									if idx <= 3 then sfx(si == NS and SFX.explosion2 or SFX.psionic, 0.8, anchorPart(ground, 3), false, rf(0.9, 1.3)) end
+									if idx == 1 then shake(0.35, 1.2 * sq) end
+								end
 							end
-							workspace:BulkMoveTo(rg.parts, rg.cfs, Enum.BulkMoveMode.FireCFrameChanged)
-							rg.base.Size = V3(0.5, rr * 2, rr * 2)
-							rg.base.Transparency = 0.35 + 0.6 * p
+						end
+						er.CFrame = CFrame.new(x, y, z) * CFrame.Angles(0, (t - t1) * 6, 0)
+						er.AssemblyLinearVelocity = V3(0, 0, 0)
+						er.AssemblyAngularVelocity = V3(0, 0, 0)
+						tip = er.Position - V3(0, 2, 0)
+					end
+					local lift = math.clamp((t - t1) / HOIST, 0, 1) * (t < t3 and 1 or 0.3)
+					for ti, set in ipairs(sets) do
+						RB.drawT(set.balls, set.cfs, from, tip, t, ti * 2.1, lift, idx + ti, N, sq, t < t1 and EXT or nil)
+					end
+				end
 
-							-- what this colour does to NPCs / owned parts it passes over
-							for _, n in ipairs(npcList) do
-								if not hitN[s][n.model] and n.hum.Parent and n.hum.Health > 0 then
-									local d = flat(n.root.Position - target).Magnitude
-									if math.abs(d - rr) < 14 + R * 0.05 then
-										hitN[s][n.model] = true
-										hurt(n, DMG[s])
-										launch(n, vecFor(s, n.root.Position), s == 3 and 1.2 or 0.9)
-										local hl = make("Highlight", { FillColor = rg.col, OutlineColor = WHITE, FillTransparency = 0.45, DepthMode = Enum.HighlightDepthMode.AlwaysOnTop }, n.model)
-										Debris:AddItem(hl, 0.9)
-										if s == 3 then
-											for _ = 1, 3 do
-												local bp = n.root.Position + V3(rf(-5, 5), 0, rf(-5, 5))
-												local bolt = fxPart({ Color = WHITE, Size = V3(0.6, 90, 0.6), Position = bp + V3(0, 45, 0) })
-												tweenKill(bolt, 0.25, { Transparency = 1, Size = V3(0.1, 90, 0.1) })
-											end
-										end
-										burst(anchorPart(n.root.Position, 2), { "Stars" })
-									end
-								end
+				if er.Parent then
+					if e.n then
+						if e.n.hum.Parent and e.n.hum.Health > 0 then
+							hurtFrac(e.n, m.big and 0.12 or 0.08)
+							launch(e.n, flatDir(flat(er.Position - origin)) * 150 + V3(0, 100, 0), 1.3)
+						end
+					else
+						kick(er, V3(rf(-150, 150), 110, rf(-150, 150)), randomSpin(14))
+					end
+				end
+				for _, set in ipairs(sets) do
+					for _, b in ipairs(set.balls) do tweenKill(b, 0.35, { Transparency = 1, Size = Vector3.one * 0.5 }) end
+				end
+			end)
+			if not ok then warn("[IvoryPeriastron] chroma tentacles: " .. tostring(err)) end
+			remaining = remaining - 1
+		end)
+	end
+	local tw0 = os.clock()
+	while remaining > 0 and os.clock() - tw0 < 9 do task.wait(0.1) end
+	skyOff(0.8)
+end
+
+SECOND.rainbow = function(ctx)
+	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
+	local sq = math.sqrt(m.scale)
+	local COUNT = m.big and 26 or 13
+	local BOUNCES = 5
+	local SPEED = 330
+	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 100)
+	local origin = root.Position + V3(0, 2.5, 0)
+	local base = (aim - origin)
+	base = base.Magnitude > 1 and base.Unit or root.CFrame.LookVector
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { debrisFolder, character }
+
+	sfx(SFX.synthStart, 1.4, root, false, 1.2)
+	sfx(SFX.stormBolt, 1.1, root, false, 1)
+	flash(origin, 0.5, m)
+	shake(0.4, 1)
+
+	local shards, parts, cfs = {}, {}, {}
+	for i = 1, COUNT do
+		local yaw = (i / (COUNT + 1) - 0.5) * math.rad(m.big and 150 or 110)
+		local pitch = rf(-0.12, 0.2)
+		local dirv = (CFrame.lookAt(origin, origin + base) * CFrame.Angles(pitch, yaw, 0)).LookVector
+		local col = RB.hue(i / COUNT, 0.8, 1)
+		local p = fxPart({ Color = col, Size = V3(1.6 * sq, 1.6 * sq, 9 * sq) })
+		local a0 = make("Attachment", { Position = V3(0, 0.8 * sq, 0) }, p)
+		local a1 = make("Attachment", { Position = V3(0, -0.8 * sq, 0) }, p)
+		make("Trail", {
+			Attachment0 = a0, Attachment1 = a1, Lifetime = 1.1, LightEmission = 1, FaceCamera = true,
+			Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, col), ColorSequenceKeypoint.new(0.5, RB.hue(i / COUNT + 0.25, 0.8, 1)), ColorSequenceKeypoint.new(1, RB.hue(i / COUNT + 0.5, 0.8, 1)) }),
+			Transparency = NumberSequence.new(0.1, 1), WidthScale = NumberSequence.new(1, 0.2),
+		}, p)
+		Debris:AddItem(p, 9)
+		shards[i] = { p = p, pos = origin, dir = dirv, bounces = 0, life = 0, alive = true, cd = {}, col = col }
+		parts[i] = p
+	end
+
+	local frame, lastOwned = 0, 0
+	local t0 = os.clock()
+	while os.clock() - t0 < 5 and root.Parent do
+		local dt = RunService.Heartbeat:Wait()
+		frame = frame + (1)
+		local anyAlive = false
+		for i, s in ipairs(shards) do
+			if s.alive then
+				anyAlive = true
+				s.life = s.life + (dt)
+				local dist = SPEED * dt
+				local hit = workspace:Raycast(s.pos, s.dir * (dist + 3), params)
+				if hit then
+					local model = hit.Instance:FindFirstAncestorOfClass("Model")
+					if not (model and model:FindFirstChildOfClass("Humanoid")) then
+						s.pos = hit.Position + hit.Normal * 1.2
+						s.dir = (s.dir - 2 * s.dir:Dot(hit.Normal) * hit.Normal).Unit
+						s.bounces = s.bounces + (1)
+						shockwave(hit.Position + hit.Normal * 0.3, 10 * sq, 0.35, 0, s.col)
+						burst(anchorPart(hit.Position + hit.Normal * 2, 2), { "Stars" })
+						if i <= 5 or i % 4 == 0 then sfx(SFX.bling, 0.6, anchorPart(hit.Position, 2), false, 0.7 + 0.18 * s.bounces + rf(0, 0.15)) end
+						if s.bounces % 2 == 1 and i % 3 == 0 then sfx(SFX.stormBolt, 0.5, anchorPart(hit.Position, 2), false, rf(1, 1.6)) end
+						if s.bounces > BOUNCES then
+							s.alive = false
+							tweenKill(s.p, 0.25, { Transparency = 1 })
+						end
+					else
+						s.pos = s.pos + (s.dir * dist)
+					end
+				else
+					s.pos = s.pos + (s.dir * dist)
+				end
+				if s.alive then
+					s.p.CFrame = CFrame.lookAt(s.pos, s.pos + s.dir)
+					if (frame + i) % 4 == 0 then
+						for _, n in ipairs(npcsIn(s.pos, 9 * sq)) do
+							if (s.cd[n.model] or 0) < os.clock() then
+								s.cd[n.model] = os.clock() + 0.5
+								hurt(n, m.big and 8 or 6)
+								launch(n, s.dir * 100 + V3(0, 70, 0), 0.5)
+								burst(anchorPart(n.root.Position, 2), { "Stars", "Rays_Thick" })
+								sfx(SFX.psionic, 0.35, anchorPart(n.root.Position, 2), false, rf(1.3, 1.9))
 							end
-							for _, r2 in ipairs(ownedList) do
-								if not hitO[s][r2] and r2.Parent and not r2.Anchored then
-									local d = flat(r2.Position - target).Magnitude
-									if math.abs(d - rr) < 14 + R * 0.05 then
-										hitO[s][r2] = true
-										kick(r2, vecFor(s, r2.Position), randomSpin(s == 6 and 40 or 10))
-									end
-								end
-							end
+						end
+					end
+					if (frame + i) % 12 == 0 then
+						for _, r2 in ipairs(ownedRoots(s.pos, 9 * sq)) do
+							kick(r2, s.dir * 130 + V3(0, 70, 0), randomSpin(12))
 						end
 					end
 				end
 			end
-
-			-- the rainbow core erupts
-			sfx(SFX.gong, 1.5, anchorPart(target, 8), false, 0.8)
-			sfx(SFX.explosion, 1.5, anchorPart(target, 8), false, 0.9)
-			sfx(SFX.thunderHuge, 1.2, anchorPart(target, 8), false, 1)
-			flash(target, 1, m)
-			for i = 1, 7 do
-				local w = (46 - i * 5) * sq
-				local cyl = fxPart({
-					Shape = Enum.PartType.Cylinder, Color = RB.hue((i - 1) / 7, 0.8, 1), Transparency = 0.2 + i * 0.03,
-					Size = V3(900, 1, 1), CFrame = CFrame.new(target + V3(0, 450, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-				})
-				tw(cyl, 0.25, { Size = V3(900, w, w) }, ES.Back)
-				tweenKill(cyl, 0.9, { Transparency = 1 }, ES.Quad, ED.In, 1.4)
-				task.delay(0.25, function()
-					if cyl.Parent then tw(cyl, 0.65, { Transparency = 1 }, ES.Quad, ED.In) end
-				end)
-				shockwave(target, 70 * sq * (1 + i * 0.35), 0.8, i * 0.05, RB.hue((i - 1) / 7, 0.8, 1))
-			end
-			pillar(target, 14 * sq, WHITE, 0.1, 1)
-			scorch(target, 60 * sq, m)
-			cracks(target, 60 * sq, m, m.big and 36 or 24)
-			flingGround(target, 45 * sq, m.scale)
-			shake(1.2, 2.5 * sq)
-			fovPunch(10, 0.8)
-			skyOff(1.5)
-			for _, n in ipairs(npcsIn(target, 75 * sq)) do
-				hurtFrac(n, m.big and 0.45 or 0.32)
-				launch(n, flatDir(flat(n.root.Position - target)) * 120 + V3(0, 220, 0), 1.5)
-			end
-			physBlast(target, 75 * sq, m.scale)
-		end)
-		tele.destroy()
-		skyOff(1)
-		if not ok then warn("[IvoryPeriastron] rainbow nova: " .. tostring(err)) end
-	end)
-end
-
--- F - RAINBOW ROAD: a seven-lane rainbow road paints itself out in front of you and you ride it at huge speed.
--- NPCs and owned parts beside the road are thrown off it to both sides; the road fades behind you.
-SECOND.rainbow = function(ctx)
-	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
-	local sq = math.sqrt(m.scale)
-	local LEN = m.big and 900 or 380
-	local SPEED = 520
-	local WIDTH = 30 * sq
-	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 100)
-	local dir = flat(aim - root.Position)
-	dir = dir.Magnitude > 1 and dir.Unit or flatDir(flat(root.CFrame.LookVector))
-	local right = dir:Cross(Vector3.yAxis)
-	local params = rayParams(character)
-	local pos = root.Position
-
-	sfx(SFX.synthStart, 1.4, root, false, 1.2)
-	sfx(SFX.dash, 1.1, root, false, 1.1)
-	local tone = sfx(SFX.synthTone, 0.9, root, true, 1.4)
-	flash(pos, 0.5, m)
-	fovPunch(18, 0.6)
-
-	local seg = 16
-	local travelled, nextSeg = 0, 0
-	local cd = {}
-	local hue0 = 0
-	local lastOwned = 0
-	local startTime = os.clock()
-	while travelled < LEN and root.Parent and hum.Health > 0 do
-		local dt = RunService.Heartbeat:Wait()
-		local step = SPEED * dt
-		travelled += step
-		pos += dir * step
-		local gy = groundAt(pos, params).Y
-		local p = V3(pos.X, gy + 3, pos.Z)
-		root.CFrame = CFrame.lookAt(p, p + dir)
-		root.AssemblyLinearVelocity = V3(0, 0, 0)
-
-		-- paint road segments
-		while nextSeg < travelled do
-			local at = V3(pos.X, gy + 0.3, pos.Z) - dir * (travelled - nextSeg)
-			for lane = 1, 7 do
-				local off = (lane - 4) * (WIDTH / 7)
-				local strip = fxPart({
-					Color = RB.hue((lane - 1) / 7 + hue0, 0.85, 1), Transparency = 0.1,
-					Size = V3(WIDTH / 7 * 1.02, 0.5, seg * 1.15), CFrame = CFrame.lookAt(at + right * off, at + right * off + dir),
-				})
-				tweenKill(strip, 1.1, { Transparency = 1 }, ES.Quad, ED.In, 1.2)
-			end
-			nextSeg += seg
-			hue0 += 0.012
 		end
-
-		-- throw everything beside the road off it
-		for _, n in ipairs(npcsIn(p, WIDTH + 14)) do
-			if (cd[n.model] or 0) < os.clock() then
-				local off = n.root.Position - p
-				if math.abs(off:Dot(right)) < WIDTH * 0.8 + 6 then
-					cd[n.model] = os.clock() + 1.5
-					local side = off:Dot(right) >= 0 and right or -right
-					hurtFrac(n, m.big and 0.22 or 0.16)
-					launch(n, side * 190 + dir * 80 + V3(0, 150, 0), 1.3)
-					burst(anchorPart(n.root.Position, 2), { "Stars", "Rays_Thick" })
-				end
-			end
-		end
-		if os.clock() - lastOwned > 0.1 then
-			lastOwned = os.clock()
-			for _, r2 in ipairs(ownedRoots(p, WIDTH + 14)) do
-				local off = r2.Position - p
-				if math.abs(off:Dot(right)) < WIDTH * 0.8 + 6 then
-					local side = off:Dot(right) >= 0 and right or -right
-					kick(r2, side * 180 + dir * 60 + V3(0, 130, 0), randomSpin(16))
-				end
-			end
+		if not anyAlive then break end
+	end
+	for _, s in ipairs(shards) do
+		if s.alive and s.p.Parent then
+			burst(anchorPart(s.pos, 2), { "Stars", "Rays_Thick" })
+			tweenKill(s.p, 0.25, { Transparency = 1 })
 		end
 	end
-
-	stopSfx(tone, 0.3)
-	sfx(SFX.explosion, 1.2, root, false, 1.2)
-	sfx(SFX.bling, 1, root, false, 1.2)
-	for i = 1, 7 do shockwave(pos - V3(0, 2.5, 0), 22 * sq * (1 + i * 0.4), 0.6, i * 0.04, RB.hue((i - 1) / 7, 0.85, 1)) end
-	burst(anchorPart(pos), { "Rays_Thick", "Stars", "Stardust" })
-	shake(0.5, 1.5 * sq)
-	root.AssemblyLinearVelocity = V3(0, 0, 0)
+	sfx(SFX.explosion, 0.8, root, false, 1.3)
 end
 
--- G - CHROMATIC ECLIPSE: the sky goes dark and a vast rainbow halo ignites over the target around a black eclipse.
--- It rains seven-colour light spears that bounce NPCs and owned parts into the air, then a colossal layered rainbow
--- beam drops through the centre of the halo.
+
+
 ULT.rainbow = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local sq = math.sqrt(m.scale)
-	local target = groundTarget(ctx.aim, root, character)
-	local HC = 170 * sq
-	local HR = 120 * sq
-	local DUR = m.big and 7 or 5.5
-	local center = target + V3(0, HC, 0)
+	local R = m.big and 520 or 260
+	local center = root.Position
+	local params = rayParams(character)
+	local ground = groundAt(center, params)
+	sfx(SFX.synthStart, 1.6, root)
+	sfx(SFX.charge, 1.2, root)
+	skyOn(0.6, RB.hue(0.8, 0.7, 0.45), 0.6)
+	flash(center, 0.8, m)
+	shake(0.6, 1 * sq)
+	local dome = ballPart(center, 4, WHITE, 0.4, { Material = Enum.Material.ForceField })
+	tw(dome, 2.2, { Size = Vector3.one * R * 0.45, Transparency = 0.8 }, ES.Quad)
+	Debris:AddItem(dome, 14)
 
-	sfx(SFX.synthStart, 1.5, root, false, 0.8)
-	sfx(SFX.gong, 1.3, anchorPart(center, 8), false, 0.7)
-	skyOn(0.9, RB.hue(0.72, 0.6, 0.35), 1)
-	flash(center, 0.6, m)
-	shake(0.8, 1.2 * sq)
-
-	local halo = {}
-	for i = 1, 7 do
-		local d = disc(center, 2, 1.4 * sq, RB.hue((i - 1) / 7, 0.85, 1), 0.1)
-		tw(d, 1.2, { Size = V3(1.4 * sq, HR * 2 * (1 - (i - 1) * 0.1), HR * 2 * (1 - (i - 1) * 0.1)) }, ES.Back)
-		halo[i] = d
-		Debris:AddItem(d, DUR + 6)
-	end
-	local eclipse = disc(center + V3(0, -0.5, 0), 2, 2 * sq, Color3.new(0, 0, 0), 0, nil)
-	eclipse.Material = Enum.Material.SmoothPlastic
-	tw(eclipse, 1.2, { Size = V3(2 * sq, HR * 0.55, HR * 0.55) }, ES.Back)
-	Debris:AddItem(eclipse, DUR + 6)
-	local glow = ballPart(center, 2, WHITE, 0.6, { Material = Enum.Material.ForceField })
-	tw(glow, 1.2, { Size = Vector3.one * HR * 0.8 })
-	Debris:AddItem(glow, DUR + 6)
-	local hum1 = sfx(SFX.synthTone, 0.8, anchorPart(center, DUR + 8), true, 0.6)
-	task.wait(1.2)
-
-	local t0, acc = os.clock(), 0
-	local rate = m.big and 60 or 32
-	local count = 0
-	while os.clock() - t0 < DUR and root.Parent do
-		local dt = RunService.Heartbeat:Wait()
-		local t = os.clock() - t0
-		for i, d in ipairs(halo) do
-			d.Color = RB.hue((i - 1) / 7 + t * 0.35, 0.85, 1)
-			d.CFrame = CFrame.new(center) * CFrame.Angles(0, t * (i % 2 == 0 and 0.6 or -0.6), math.rad(90))
+	local op = OverlapParams.new()
+	op.FilterType = Enum.RaycastFilterType.Exclude
+	op.FilterDescendantsInstances = { character, fxFolder, debrisFolder, dome }
+	op.MaxParts = m.big and 700 or 420
+	local painted = {}
+	for _, p in ipairs(workspace:GetPartBoundsInRadius(center, R, op)) do
+		if p.Transparency < 0.95 then
+			painted[#painted + 1] = { p = p, c = p.Color, d = (p.Position - center).Magnitude }
 		end
-		acc += rate * dt
-		while acc >= 1 do
-			acc -= 1
-			count += 1
-			local a, rr = rand() * TAU, HR * 1.05 * math.sqrt(rand())
-			local ground = target + V3(math.cos(a) * rr, 0, math.sin(a) * rr)
-			local col = RB.hue(rand(), 0.8, 1)
-			local sp = fxPart({ Color = col, Size = V3(1.6 * sq, 70 * sq, 1.6 * sq), Position = ground + V3(0, HC, 0) })
-			local core = fxPart({ Color = WHITE, Size = V3(0.6 * sq, 72 * sq, 0.6 * sq), Position = ground + V3(0, HC, 0) })
-			tw(sp, 0.32, { Position = ground + V3(0, 35 * sq, 0) }, ES.Quad, ED.In)
-			tw(core, 0.32, { Position = ground + V3(0, 35 * sq, 0) }, ES.Quad, ED.In)
-			Debris:AddItem(sp, 0.9)
-			Debris:AddItem(core, 0.9)
-			local my = count
-			task.delay(0.32, function()
-				tweenKill(sp, 0.25, { Transparency = 1 })
-				tweenKill(core, 0.25, { Transparency = 1 })
-				shockwave(ground + V3(0, 0.3, 0), 12 * sq, 0.4, 0, col)
-				if my % 5 == 0 then sfx(SFX.psionic, 0.4, anchorPart(ground, 3), false, rf(1.0, 1.5)) end
-				if my % 9 == 0 then sfx(SFX.bling, 0.5, anchorPart(ground, 3), false, rf(0.8, 1.6)) end
-				for _, n in ipairs(npcsIn(ground, 11 * sq)) do
-					hurt(n, m.big and 5 or 4)
-					launch(n, V3(rf(-30, 30), 80, rf(-30, 30)), 0.6)
+	end
+	table.sort(painted, function(a, b) return a.d < b.d end)
+
+	local DUR_A = 2.0
+	local DUR_B = m.big and 6.4 or 4.8
+	local BEAT = 0.6
+	local beatN = 0
+	local t0 = os.clock()
+	local lastUp = 0
+	local ok, err = pcall(function()
+		while os.clock() - t0 < DUR_A + DUR_B and root.Parent do
+			RunService.Heartbeat:Wait()
+			local t = os.clock() - t0
+			local waveR = R * math.min(t / DUR_A, 1) ^ 0.8
+			if os.clock() - lastUp > 0.1 then
+				lastUp = os.clock()
+				for _, e in ipairs(painted) do
+					if e.d > waveR then break end
+					if e.p.Parent then e.p.Color = RB.hue(e.d / 140 - t * 0.55 + beatN * 0.12, 0.85, 1) end
 				end
-				for _, r2 in ipairs(ownedRoots(ground, 12 * sq)) do kick(r2, V3(rf(-30, 30), 110, rf(-30, 30)), randomSpin(14)) end
+				dome.Color = RB.hue(t * 0.4, 0.5, 1)
+			end
+			if t > DUR_A and (t - DUR_A) >= beatN * BEAT then
+				beatN = beatN + 1
+				local col = RB.hue(beatN * 0.137, 0.85, 1)
+				shockwave(ground, 40 * sq + beatN * 8, 0.55, 0, col)
+				shockwave(ground, 24 * sq, 0.45, 0.05, WHITE)
+				shake(0.25, 0.7 * sq)
+				sfx(SFX.bling, 0.7, root, false, 0.8 + beatN * 0.06)
+				if beatN % 2 == 1 then sfx(SFX.synthTone, 0.6, root, false, 0.9 + beatN * 0.05) end
+				for i = 1, 4 do
+					local a = rf(0, TAU)
+					local rr = rf(30, R * 0.5)
+					local pp = groundAt(center + V3(math.cos(a) * rr, 0, math.sin(a) * rr), params)
+					pillar(pp, rf(6, 12) * sq, RB.hue(rf(0, 1), 0.85, 1), 0.3, 0.6)
+				end
+				for _, n in ipairs(npcsIn(center, R)) do
+					hurt(n, m.big and 4 or 3)
+					launch(n, V3(rf(-30, 30), 85 + beatN * 4, rf(-30, 30)), 0.5)
+				end
+				for _, r2 in ipairs(ownedRoots(center, R)) do
+					kick(r2, V3(rf(-25, 25), 65 + beatN * 3, rf(-25, 25)), randomSpin(8))
+				end
+			end
+		end
+	end)
+	if not ok then warn("[IvoryPeriastron] prismatic dimension: " .. tostring(err)) end
+
+	for _, e in ipairs(painted) do if e.p.Parent then e.p.Color = WHITE end end
+	local c = root.Parent and root.Position or center
+	flash(c, 1, m)
+	shake(0.8, 2 * sq)
+	sfx(SFX.explosion, 1.4, root, false, 1)
+	sfx(SFX.thunderBoom, 1.2, root, false, 0.9)
+	for i = 1, 7 do shockwave(ground, R * 0.12 * (1 + i * 0.45), 0.8, i * 0.05, RB.hue(i / 7, 0.9, 1)) end
+	pillar(ground, 30 * sq, WHITE, 0.2, 1.2)
+	for _, n in ipairs(npcsIn(c, R)) do
+		hurtFrac(n, m.big and 0.28 or 0.18)
+		launch(n, flatDir(flat(n.root.Position - c)) * 170 + V3(0, 120, 0), 1.4)
+	end
+	physBlast(c, R * 0.5, m.scale)
+	task.wait(0.35)
+	for _, e in ipairs(painted) do
+		if e.p.Parent then pcall(function() e.p.Color = e.c end) end
+	end
+	tweenKill(dome, 0.6, { Transparency = 1 })
+	skyOff(1.2)
+end
+
+RB.defs = {
+	{ sid = "noir", asset = 120307951 }, { sid = "ivory", asset = 108158379 }, { sid = "azure", asset = 69499437 },
+	{ sid = "chartreuse", asset = 80661504 }, { sid = "amethyst", asset = 93136802 }, { sid = "crimson", asset = 99119240 },
+	{ sid = "grimgold", asset = 73829193 }, { sid = "rainbow", asset = 159229806 },
+}
+RB.ROT = {
+	X = CFrame.Angles(0, math.rad(90), 0),
+	Y = CFrame.Angles(math.rad(-90), 0, 0),
+	Z = CFrame.new(),
+}
+RB.cache = {}
+
+function RB.loadSword(asset)
+	if RB.cache[asset] ~= nil then return RB.cache[asset] end
+	local ok, obj = pcall(function() return game:GetService("InsertService"):LoadAsset(asset) end)
+	if not (ok and obj) then
+		ok, obj = pcall(function() return game:GetObjects("rbxassetid://" .. tostring(asset))[1] end)
+	end
+	local found = false
+	if ok and obj then
+		local model = Instance.new("Model")
+		for _, d in ipairs(obj:GetDescendants()) do
+			if d:IsA("BasePart") then
+				local c = d:Clone()
+				for _, ch in ipairs(c:GetChildren()) do
+					if not (ch:IsA("DataModelMesh") or ch:IsA("Decal") or ch:IsA("Texture") or ch:IsA("SurfaceAppearance")) then ch:Destroy() end
+				end
+				c.Anchored = true
+				c.CanCollide = false
+				c.CanTouch = false
+				c.CanQuery = false
+				c.Massless = true
+				c.Parent = model
+				if d.Name == "Handle" then model.PrimaryPart = c end
+			end
+		end
+		pcall(function() obj:Destroy() end)
+		if not model.PrimaryPart then
+			local first = model:FindFirstChildWhichIsA("BasePart")
+			if first then model.PrimaryPart = first end
+		end
+		if model.PrimaryPart then found = model else model:Destroy() end
+	end
+	RB.cache[asset] = found
+	return found
+end
+
+function RB.fallback()
+	local model = Instance.new("Model")
+	local c = template.Handle:Clone()
+	for _, ch in ipairs(c:GetChildren()) do
+		if not ch:IsA("SpecialMesh") then ch:Destroy() end
+	end
+	c.Anchored = true
+	c.CanCollide = false
+	c.CanTouch = false
+	c.CanQuery = false
+	c.Parent = model
+	model.PrimaryPart = c
+	return model
+end
+
+function RB.makeSword(def, len, col)
+	local src = RB.loadSword(def.asset)
+	local model = (src and src:Clone()) or RB.fallback()
+	local hp = model.PrimaryPart
+	local sz = hp.Size
+	local axis, longest = "Z", sz.Z
+	if sz.X > longest then axis, longest = "X", sz.X end
+	if sz.Y > longest then axis, longest = "Y", sz.Y end
+	local factor = len / math.max(longest, 0.5)
+	local scaled = pcall(function() model:ScaleTo(factor) end)
+	model.Parent = workspace
+	Debris:AddItem(model, 40)
+	make("Highlight", { FillColor = col, OutlineColor = WHITE, FillTransparency = 0.65, OutlineTransparency = 0.1, DepthMode = Enum.HighlightDepthMode.Occluded }, model)
+	local axv = axis == "X" and V3(1, 0, 0) or (axis == "Y" and V3(0, 1, 0) or V3(0, 0, 1))
+	local half = len * 0.5
+	local a0 = make("Attachment", { Position = axv * half }, hp)
+	local a1 = make("Attachment", { Position = axv * (half * 0.1) }, hp)
+	local trail = make("Trail", {
+		Attachment0 = a0, Attachment1 = a1, Lifetime = 0.45, Color = ColorSequence.new(col, WHITE),
+		Transparency = NumberSequence.new(0.2, 1), LightEmission = 1, FaceCamera = true, Enabled = false,
+	}, hp)
+	return model, RB.ROT[axis], trail, scaled and factor or 1
+end
+
+function RB.dirTo(a, b)
+	local d = b - a
+	if d.Magnitude > 0.05 then return d.Unit end
+	return V3(0, 1, 0)
+end
+
+RB.imp = {}
+RB.imp.noir = function(p, n, m, sq, s)
+	sfx(SFX.psionic, 0.9, anchorPart(p, 3), false, rf(0.8, 1))
+	local ball = ballPart(p, 3, Color3.new(0.02, 0, 0.05), 0, { Material = Enum.Material.SmoothPlastic })
+	local rim = ballPart(p, 4, s.pal[2], 0.5)
+	tw(ball, 0.5, { Size = Vector3.one * 22 * sq }, ES.Back)
+	tw(rim, 0.5, { Size = Vector3.one * 26 * sq }, ES.Back)
+	task.delay(0.9, function()
+		tweenKill(ball, 0.25, { Size = Vector3.one, Transparency = 1 })
+		tweenKill(rim, 0.25, { Size = Vector3.one, Transparency = 1 })
+	end)
+	for _, v in ipairs(npcsIn(p, 40 * sq)) do
+		hurt(v, 6)
+		launch(v, RB.dirTo(v.root.Position, p) * 110 + V3(0, 25, 0), 0.7)
+	end
+	for _, r2 in ipairs(ownedRoots(p, 40 * sq)) do kick(r2, RB.dirTo(r2.Position, p) * 120, randomSpin(10)) end
+end
+RB.imp.ivory = function(p, n, m, sq, s)
+	sfx(SFX.magicCast, 1, anchorPart(p, 3), false, 1.2)
+	pillar(p, 14 * sq, WHITE, 0.25, 0.8)
+	shockwave(p, 26 * sq, 0.5, 0, s.pal[1])
+	burst(anchorPart(p, 2), { "Stars" })
+	for _, v in ipairs(npcsIn(p, 30 * sq)) do
+		hurt(v, 6)
+		launch(v, V3(0, 120, 0), 0.9)
+	end
+	physBlast(p, 24 * sq, m.scale * 0.4)
+end
+RB.imp.azure = function(p, n, m, sq, s)
+	sfx(SFX.glass, 1, anchorPart(p, 3), false, 1)
+	for i = 1, 8 do
+		local a = i / 8 * TAU
+		local sp = fxPart({
+			Color = i % 2 == 0 and s.pal[1] or WHITE, Size = V3(2.2 * sq, 12 * sq, 2.2 * sq), Transparency = 0.1,
+			CFrame = CFrame.new(p) * CFrame.Angles(0, a, 0) * CFrame.new(0, 4 * sq, -5 * sq) * CFrame.Angles(math.rad(40), 0, 0),
+		})
+		tweenKill(sp, 1.1, { Transparency = 1 }, ES.Quad, ED.In)
+	end
+	shockwave(p, 28 * sq, 0.5, 0, s.pal[1])
+	for _, v in ipairs(npcsIn(p, 30 * sq)) do
+		hurt(v, 5)
+		launch(v, V3(0, 0, 0), 2.2)
+	end
+end
+RB.imp.chartreuse = function(p, n, m, sq, s)
+	sfx(SFX.explosion2, 0.8, anchorPart(p, 3), false, 1.5)
+	local cloud = ballPart(p, 4, s.pal[1], 0.55)
+	tw(cloud, 0.5, { Size = Vector3.one * 28 * sq }, ES.Quad)
+	task.delay(2.2, function() tweenKill(cloud, 0.4, { Transparency = 1 }) end)
+	task.spawn(function()
+		for _ = 1, 3 do
+			for _, v in ipairs(npcsIn(p, 16 * sq)) do
+				hurt(v, 1.5)
+				launch(v, V3(rf(-10, 10), 35, rf(-10, 10)), 0.5)
+			end
+			task.wait(0.7)
+		end
+	end)
+end
+RB.imp.amethyst = function(p, n, m, sq, s)
+	sfx(SFX.glass, 1, anchorPart(p, 3), false, 0.8)
+	for i = 1, 6 do
+		local a = rf(0, TAU)
+		local rr = rf(2, 14) * sq
+		local base = p + V3(math.cos(a) * rr, 0, math.sin(a) * rr)
+		local sp = fxPart({ Color = s.pal[i % 3 + 1], Size = V3(3 * sq, 1, 3 * sq), Position = base })
+		tw(sp, 0.25, { Size = V3(3 * sq, rf(12, 20) * sq, 3 * sq), Position = base + V3(0, 7 * sq, 0) }, ES.Back)
+		tweenKill(sp, 0.6, { Transparency = 1 }, ES.Quad, ED.In, 1.4)
+	end
+	for _, v in ipairs(npcsIn(p, 22 * sq)) do
+		hurt(v, 6)
+		launch(v, V3(rf(-20, 20), 100, rf(-20, 20)), 0.9)
+	end
+	physBlast(p, 20 * sq, m.scale * 0.4)
+end
+RB.imp.crimson = function(p, n, m, sq, s)
+	sfx(SFX.explosion2, 1, anchorPart(p, 3), false, 1)
+	flash(p, 0.5, m)
+	shockwave(p, 34 * sq, 0.5, 0, s.pal[1])
+	shockwave(p, 20 * sq, 0.4, 0.05, WHITE)
+	burst(anchorPart(p, 2), { "Supernova" })
+	for _, v in ipairs(npcsIn(p, 32 * sq)) do
+		hurt(v, 7)
+		launch(v, flatDir(flat(v.root.Position - p)) * 150 + V3(0, 90, 0), 1)
+	end
+	physBlast(p, 28 * sq, m.scale * 0.6)
+end
+RB.imp.grimgold = function(p, n, m, sq, s)
+	sfx(SFX.glass, 1, anchorPart(p, 3), false, 1.3)
+	for i = 1, 12 do
+		local coin = ballPart(p + V3(0, 2, 0), 1.6 * sq, i % 2 == 0 and s.pal[1] or s.pal[2], 0)
+		local a = rf(0, TAU)
+		local rr = rf(10, 28) * sq
+		tw(coin, 0.7, { Position = p + V3(math.cos(a) * rr, rf(4, 20) * sq, math.sin(a) * rr) }, ES.Quad)
+		tweenKill(coin, 0.7, { Transparency = 1 }, ES.Quad, ED.In, 1.5)
+	end
+	shockwave(p, 26 * sq, 0.5, 0, s.pal[1])
+	for _, v in ipairs(npcsIn(p, 28 * sq)) do
+		hurt(v, 7)
+		launch(v, flatDir(flat(v.root.Position - p)) * 90 + V3(0, 100, 0), 1)
+	end
+	physBlast(p, 22 * sq, m.scale * 0.5)
+end
+
+RB.legion = function(ctx)
+	local m, root, character = ctx.m, ctx.root, ctx.character
+	local sq = math.sqrt(m.scale)
+	local params = rayParams(character)
+	local LEN = 20 * sq
+
+	local pending = 0
+	for _, d in ipairs(RB.defs) do
+		if RB.cache[d.asset] == nil then
+			pending = pending + 1
+			task.spawn(function()
+				pcall(RB.loadSword, d.asset)
+				pending = pending - 1
 			end)
 		end
 	end
+	local tl = os.clock()
+	while pending > 0 and os.clock() - tl < 5 do task.wait(0.1) end
 
-	-- the beam
-	stopSfx(hum1, 0.4)
-	sfx(SFX.explosion, 1.6, anchorPart(target, 8), false, 0.8)
-	sfx(SFX.gong, 1.5, anchorPart(target, 8), false, 0.6)
-	sfx(SFX.thunderHuge, 1.4, anchorPart(target, 8), false, 0.9)
-	flash(target, 1, m)
+	local sw = {}
+	for i, d in ipairs(RB.defs) do
+		local pal
+		for _, st in ipairs(STYLES) do if st.id == d.sid then pal = st.pal end end
+		pal = pal or STYLES[1].pal
+		local model, rot, trail, factor = RB.makeSword(d, i == 8 and LEN * 1.5 or LEN, pal[1])
+		sw[i] = { d = d, model = model, rot = rot, trail = trail, scale = factor, col = pal[1], pal = pal, state = "hold" }
+	end
+
+	local function rcfNow()
+		local p = root.Position
+		local look = flat(root.CFrame.LookVector)
+		if look.Magnitude < 0.05 then look = V3(0, 0, -1) end
+		return CFrame.lookAt(p, p + look)
+	end
+	local function slot(i, t)
+		local rcf = rcfNow()
+		if i == 8 then
+			return rcf:PointToWorldSpace(V3(0, 24 * sq + math.sin(t * 1.6) * 1.5 * sq, 12 * sq)), rcf:VectorToWorldSpace(V3(0, 1, 0.1)).Unit
+		end
+		local A = math.rad(-78 + (i - 1) * 26)
+		local pos = rcf:PointToWorldSpace(V3(math.sin(A) * 20 * sq, 7 * sq + math.cos(A) * 9 * sq + math.sin(t * 1.9 + i) * 1.2 * sq, 9 * sq + (1 - math.cos(A)) * 4 * sq))
+		return pos, rcf:VectorToWorldSpace(V3(math.sin(A) * 0.9, math.cos(A), 0.2)).Unit
+	end
+	local function place(s, pos, dir)
+		s.model:PivotTo(CFrame.lookAt(pos, pos + dir) * s.rot)
+	end
+
+	sfx(SFX.gong, 1.4, root)
+	sfx(SFX.synthStart, 1.4, root)
+	skyOn(0.5, RB.hue(0.8, 0.6, 0.45), 0.55)
+	flash(root.Position, 0.7, m)
+	shake(0.5, 0.8 * sq)
+	local halo = disc(root.Position, 2, 1, WHITE, 0.45)
+	local halo2 = disc(root.Position, 2, 1, RB.hue(0.6), 0.55)
+	Debris:AddItem(halo, 40)
+	Debris:AddItem(halo2, 40)
+	tw(halo, 1.2, { Size = V3(1.5, 74 * sq, 74 * sq) }, ES.Back)
+	tw(halo2, 1.4, { Size = V3(1.5, 50 * sq, 50 * sq) }, ES.Back)
+	local function haloUpdate(t)
+		local rcf = rcfNow()
+		halo.CFrame = rcf * CFrame.new(0, 22 * sq, 15 * sq) * CFrame.Angles(0, math.rad(90), 0)
+		halo2.CFrame = rcf * CFrame.new(0, 22 * sq, 14 * sq) * CFrame.Angles(0, math.rad(90), 0)
+		halo.Color = RB.hue(t * 0.5, 0.6, 1)
+		halo2.Color = RB.hue(t * 0.5 + 0.5, 0.8, 1)
+	end
+
+	local APP, GAP = 0.5, 0.22
+	local total1 = 7 * GAP + 0.4 + APP + 0.3
+	local announced = {}
+	local t0 = os.clock()
+	while os.clock() - t0 < total1 and root.Parent do
+		RunService.Heartbeat:Wait()
+		local t = os.clock() - t0
+		haloUpdate(t)
+		for i, s in ipairs(sw) do
+			local start = (i - 1) * GAP + (i == 8 and 0.4 or 0)
+			local p = math.clamp((t - start) / APP, 0, 1)
+			local pos, dir = slot(i, t)
+			if p > 0 then
+				local e = 1 - (1 - p) ^ 3
+				place(s, pos - V3(0, (1 - e) * 26 * sq, 0), dir)
+				if p >= 1 and not announced[i] then
+					announced[i] = true
+					shockwave(groundAt(pos, params), (i == 8 and 28 or 14) * sq, 0.5, 0, s.col)
+					burst(anchorPart(pos, 2), { "Stars" })
+					sfx(i == 8 and SFX.thunderBoom or SFX.bling, 0.8, anchorPart(pos, 3), false, 0.8 + i * 0.08)
+				end
+			else
+				place(s, pos - V3(0, 80, 0), dir)
+			end
+		end
+	end
+
+	local keeping = true
+	task.spawn(function()
+		while keeping and root.Parent do
+			RunService.Heartbeat:Wait()
+			local t = os.clock() - t0
+			haloUpdate(t)
+			for i, s in ipairs(sw) do
+				if s.state == "hold" and s.model.Parent then
+					local pos, dir = slot(i, t)
+					place(s, pos, dir)
+				end
+			end
+		end
+	end)
+
+	sfx(SFX.charge, 1.2, root)
+	task.wait(0.9)
+
+	local origin = root.Position
+	local list = nearestFirst(npcsIn(origin, maxRange()), origin)
+	local aim = ctx.aim
+	local targets = {}
+	for i = 1, 8 do
+		if #list > 0 then
+			targets[i] = { n = list[(i - 1) % #list + 1] }
+		else
+			local a = rf(0, TAU)
+			local rr = rf(5, 35)
+			targets[i] = { pos = groundAt(aim + V3(math.cos(a) * rr, 0, math.sin(a) * rr), params) }
+		end
+	end
+	local function tgtPos(tg)
+		if tg.n and tg.n.root.Parent then return tg.n.root.Position end
+		return tg.pos or tg.n and tg.n.root.Position or aim
+	end
+	local flying = 0
 	for i = 1, 7 do
-		local w = (90 - i * 10) * sq
-		local cyl = fxPart({
-			Shape = Enum.PartType.Cylinder, Color = RB.hue((i - 1) / 7, 0.8, 1), Transparency = 0.15 + i * 0.03,
-			Size = V3(HC, 1, 1), CFrame = CFrame.new(target + V3(0, HC / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-		})
-		tw(cyl, 0.25, { Size = V3(HC, w, w) }, ES.Back)
-		task.delay(0.9, function() if cyl.Parent then tw(cyl, 0.6, { Transparency = 1 }) end end)
-		Debris:AddItem(cyl, 2)
-		shockwave(target, 80 * sq * (1 + i * 0.3), 0.9, i * 0.05, RB.hue((i - 1) / 7, 0.85, 1))
+		local s = sw[i]
+		local tg = targets[i]
+		flying = flying + 1
+		task.spawn(function()
+			local ok, err = pcall(function()
+				task.wait((i - 1) * 0.2)
+				s.state = "fly"
+				local startPos = s.model:GetPivot().Position
+				local dist = (tgtPos(tg) - startPos).Magnitude
+				local dur = math.max(dist / 340, 0.3)
+				local tt0 = os.clock()
+				s.trail.Enabled = true
+				sfx(SFX.swordSlash, 0.8, anchorPart(startPos, 3), false, rf(1.1, 1.5))
+				local pos = startPos
+				while true do
+					RunService.Heartbeat:Wait()
+					local p = (os.clock() - tt0) / dur
+					if p >= 1 then break end
+					local npos = startPos:Lerp(tgtPos(tg), p) + V3(0, math.sin(p * math.pi) * 8 * sq, 0)
+					local d = npos - pos
+					if d.Magnitude > 0.01 then place(s, npos, d.Unit) end
+					pos = npos
+				end
+				local ip = tgtPos(tg)
+				if tg.n then ip = groundAt(ip, params) end
+				RB.imp[s.d.sid](ip, tg.n, m, sq, s)
+				place(s, ip + V3(0, LEN * 0.3, 0), V3(0, -1, 0))
+				task.wait(0.9)
+				s.trail.Enabled = false
+				burst(anchorPart(ip + V3(0, 3, 0), 2), { "Stars" })
+				s.model:Destroy()
+			end)
+			if not ok then warn("[IvoryPeriastron] legion sword: " .. tostring(err)) end
+			flying = flying - 1
+		end)
 	end
-	pillar(target, 20 * sq, WHITE, 0.1, 1.2)
-	scorch(target, 80 * sq, m)
-	cracks(target, 80 * sq, m, m.big and 40 or 28)
-	flingGround(target, 60 * sq, m.scale)
-	shake(1.5, 3 * sq)
-	fovPunch(12, 1)
-	for _, n in ipairs(npcsIn(target, 85 * sq)) do
-		hurtFrac(n, m.big and 0.6 or 0.45)
-		launch(n, flatDir(flat(n.root.Position - target)) * 150 + V3(0, 240, 0), 1.6)
+	local fw = os.clock()
+	while flying > 0 and os.clock() - fw < 9 do task.wait(0.1) end
+
+	local cpos = aim
+	if #list > 0 then
+		local sum = V3(0, 0, 0)
+		for _, n in ipairs(list) do sum = sum + n.root.Position end
+		cpos = sum / #list
 	end
-	physBlast(target, 85 * sq, m.scale * 1.2)
-	for _, d in ipairs(halo) do tweenKill(d, 0.6, { Transparency = 1 }) end
-	tweenKill(eclipse, 0.6, { Transparency = 1 })
-	tweenKill(glow, 0.6, { Transparency = 1 })
-	task.wait(0.8)
-	skyOff(1.5)
+	cpos = groundAt(cpos, params)
+	local big = sw[8]
+	big.state = "fly"
+	keeping = false
+	sfx(SFX.charge, 1.4, root, false, 0.9)
+	sfx(SFX.energyCharge, 1.2, root)
+	big.trail.Enabled = true
+	local startPos = big.model:GetPivot().Position
+	local top = cpos + V3(0, 95 * sq, 0)
+	local rt0 = os.clock()
+	while os.clock() - rt0 < 1.1 do
+		RunService.Heartbeat:Wait()
+		local p = (os.clock() - rt0) / 1.1
+		local e = 1 - (1 - p) ^ 2
+		pcall(function() big.model:ScaleTo(big.scale * (1 + 1.8 * e)) end)
+		place(big, startPos:Lerp(top, e), V3(0, 1, 0))
+		haloUpdate(os.clock() - t0)
+	end
+	local dt0 = os.clock()
+	while os.clock() - dt0 < 0.3 do
+		RunService.Heartbeat:Wait()
+		local p = (os.clock() - dt0) / 0.3
+		place(big, top:Lerp(cpos + V3(0, 14 * sq, 0), p * p), V3(0, -1, 0))
+	end
+	sfx(SFX.explosion2, 1.4, anchorPart(cpos, 4), false, 0.9)
+	sfx(SFX.thunderBoom, 1.3, anchorPart(cpos, 4), false, 1)
+	sfx(SFX.impactExp, 1.2, anchorPart(cpos, 4), false, 0.8)
+	flash(cpos, 1, m)
+	shake(1, 2.2 * sq)
+	for i = 1, 8 do shockwave(cpos, (30 + i * 16) * sq, 0.9, i * 0.05, RB.hue(i / 8, 0.9, 1)) end
+	pillar(cpos, 36 * sq, WHITE, 0.15, 1.4)
+	for i = 1, 6 do
+		local a = i / 6 * TAU
+		pillar(cpos + V3(math.cos(a) * 24 * sq, 0, math.sin(a) * 24 * sq), 12 * sq, RB.hue(i / 6, 0.9, 1), 0.25, 1.1)
+	end
+	burst(anchorPart(cpos + V3(0, 5, 0), 3), { "Supernova", "Stars", "Core" })
+	for _, n in ipairs(npcsIn(cpos, 110 * sq)) do
+		hurtFrac(n, m.big and 0.35 or 0.25)
+		launch(n, flatDir(flat(n.root.Position - cpos)) * 200 + V3(0, 130, 0), 1.5)
+	end
+	physBlast(cpos, 110 * sq, m.scale)
+	task.wait(0.9)
+	big.trail.Enabled = false
+	big.model:Destroy()
+	tweenKill(halo, 0.6, { Transparency = 1 })
+	tweenKill(halo2, 0.6, { Transparency = 1 })
+	for _, s in ipairs(sw) do if s.model.Parent then s.model:Destroy() end end
+	skyOff(1.2)
 end
 
 local function useUlt()
@@ -4591,7 +5022,25 @@ local function useUlt()
 	lastUlt = os.clock()
 end
 
----------------------------------------------------------------- simulation radius (applied constantly from execute)
+local function useFourth()
+	local st = STYLES[styleIdx]
+	if st.id ~= "rainbow" then
+		showToast("Periastron Legion is Rainbow Periastron only", mode().hi)
+		return
+	end
+	if RB.busy or os.clock() - RB.last < (bigMode and 8 or 22) then return end
+	local character, hum, root = liveChar()
+	if not character then return end
+	RB.busy = true
+	RB.last = os.clock()
+	local m = mode()
+	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 60)
+	local ok, err = pcall(RB.legion, { m = m, character = character, hum = hum, root = root, aim = aim })
+	if not ok then warn("[IvoryPeriastron] legion: " .. tostring(err)) end
+	RB.busy = false
+	RB.last = os.clock()
+end
+
 local SIM_RADIUS = 1000
 local simAlive = true
 table.insert(connections, { Disconnect = function() simAlive = false end })
@@ -4608,7 +5057,6 @@ task.spawn(function()
 	end
 end)
 
----------------------------------------------------------------- mode / style switching
 local function refreshMode(label)
 	buildFx()
 	local m = mode()
@@ -4638,20 +5086,134 @@ local function toggleDestructive()
 	refreshMode("Destructive: " .. (bigMode and "ON" or "OFF"))
 end
 
----------------------------------------------------------------- ability buttons
 local equipped = false
 local uiToken = 0
 local currentTool = nil
 local desktopGui
 local desktopButtons = {}
 local labelCache = {}
+local MU = { idx = 0, on = false, sound = nil, token = 0, vol = 0.55 }
+MU.LIST = {
+	{ name = "leaveamsg - sped up + bass boosted", url = "https://www.dropbox.com/scl/fi/9yhe3n5xjv6wmnxoixwmd/leaveamsg-sped-up-bass-boosted.mp3?rlkey=88ucxzihhodmsl0h78lquj3r3&st=rmzv7jp6&dl=0" },
+	{ name = "Hide n Seek - Sped Up", url = "https://www.dropbox.com/scl/fi/3iqhmps7i71ep7tpngvp7/Hide-n-Seek-Sped-Up-1.mp3?rlkey=kjjwjbseuzhp5lusufsgr21r0&st=l7bokfi7&dl=0" },
+	{ name = "fly day chinatown (hoodtrap)", url = "https://www.dropbox.com/scl/fi/yiubdfxdnyrlljkb1pr3o/fly-day-chinatown-hoodtrap.mp3?rlkey=aqckpzja03ve8waaw256po7o8&st=meygy5o7&dl=0" },
+	{ name = "a new kind of love - Enkei Remix", url = "https://www.dropbox.com/scl/fi/twu984r0mj5s8oak4trjf/a-new-kind-of-love-Enkei-Remix.mp3?rlkey=ra5ngnt8ixfa2f2yawjyhvlph&st=sl2izd4k&dl=0" },
+	{ name = "1 Thing", url = "https://www.dropbox.com/scl/fi/a3jzashbapndfz28ktz4a/1-Thing.mp3?rlkey=9274s4ndh6h6g63e01raa5swz&st=5gx9q40q&dl=0" },
+}
+
+MU.PLAYLIST_URL = ""
+
+function MU.fixUrl(u)
+	u = u:gsub("dl=0", "dl=1")
+	if u:find("dropbox.com") and not u:find("dl=1") and not u:find("raw=1") then
+		u = u .. (u:find("?", 1, true) and "&dl=1" or "?dl=1")
+	end
+	return u
+end
+
+function MU.say(text) showToast(text, mode().hi) end
+
+function MU.content(e)
+	if e.id then return "rbxassetid://" .. tostring(e.id) end
+	if e.url and writefile and getcustomasset and isfile then
+		local folder = "IvoryPeriastronMusic"
+		pcall(function()
+			if isfolder and makefolder and not isfolder(folder) then makefolder(folder) end
+		end)
+		local file = folder .. "/" .. (tostring(e.name):gsub("[^%w]", "_")) .. ".mp3"
+		if not isfile(file) then writefile(file, game:HttpGet(MU.fixUrl(e.url))) end
+		return getcustomasset(file)
+	end
+	return nil
+end
+
+function MU.stop()
+	MU.token = MU.token + 1
+	MU.on = false
+	if MU.sound then
+		pcall(function()
+			MU.sound:Stop()
+			MU.sound:Destroy()
+		end)
+		MU.sound = nil
+	end
+end
+
+function MU.play(i, tries)
+	tries = tries or 0
+	local list = MU.LIST
+	if #list == 0 then
+		MU.say("No songs in MU.LIST")
+		return
+	end
+	MU.stop()
+	MU.idx = ((i - 1) % #list) + 1
+	local e = list[MU.idx]
+	local my = MU.token
+	MU.on = true
+	MU.say("Loading: " .. e.name)
+	task.spawn(function()
+		local ok, content = pcall(MU.content, e)
+		if my ~= MU.token then return end
+		if not (ok and content) then
+			MU.on = false
+			MU.say("Song failed: " .. e.name)
+			return
+		end
+		local s = Instance.new("Sound")
+		s.Name = "PeriastronMusic"
+		s.SoundId = content
+		s.Volume = MU.vol
+		s.Looped = false
+		s.Parent = flashGui
+		MU.sound = s
+		local w0 = os.clock()
+		while not s.IsLoaded and os.clock() - w0 < 8 and my == MU.token do task.wait(0.1) end
+		if my ~= MU.token then return end
+		if not s.IsLoaded then
+			MU.say("Can't play: " .. e.name .. " (skipping)")
+			if tries + 1 < #list then MU.play(MU.idx + 1, tries + 1) else MU.stop() end
+			return
+		end
+		s:Play()
+		MU.say("Now playing: " .. e.name)
+		s.Ended:Connect(function()
+			if my == MU.token then MU.play(MU.idx + 1) end
+		end)
+	end)
+end
+
+function MU.next() MU.play(MU.idx + 1) end
+
+function MU.toggle()
+	if MU.on then
+		MU.stop()
+		MU.say("Music stopped")
+	else
+		MU.play(MU.idx == 0 and 1 or MU.idx)
+	end
+end
+
+table.insert(connections, { Disconnect = function() MU.stop() end })
+
+if MU.PLAYLIST_URL ~= "" then
+	task.spawn(function()
+		local ok, body = pcall(function() return game:HttpGet(MU.fixUrl(MU.PLAYLIST_URL)) end)
+		if not ok or type(body) ~= "string" then return end
+		local list = {}
+		for line in body:gmatch("[^\r\n]+") do
+			local name, url = line:match("^%s*(.-)%s*|%s*(.-)%s*$")
+			if name and name ~= "" and url and url:sub(1, 4) == "http" then list[#list + 1] = { name = name, url = url } end
+		end
+		if #list > 0 then MU.LIST = list end
+	end)
+end
+
 
 local function aimedCast()
 	if currentTool then cast(currentTool, aimPoint()) end
 end
 
--- touch: ang/rad place the button around the jump button; `above` puts it right above another button.
--- desktop: col/row place it in the bottom-right grid.
 local BUTTONS = {
 	{ act = ACT.nova,   key = Enum.KeyCode.Z, fn = aimedCast,         ang = 176, rad = TOUCH_BUTTON_DISTANCE,       col = 1 },
 	{ act = ACT.statue, key = Enum.KeyCode.X, fn = useStatue,         ang = 153, rad = TOUCH_BUTTON_DISTANCE,       col = 2 },
@@ -4660,6 +5222,9 @@ local BUTTONS = {
 	{ act = ACT.theme,  key = Enum.KeyCode.B, fn = cycleStyle,        ang = 166, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 5 },
 	{ act = ACT.mode,   key = Enum.KeyCode.C, fn = toggleDestructive, above = 5,                                    col = 5, row = 1 },
 	{ act = ACT.third,  key = Enum.KeyCode.G, fn = useUlt,            ang = 137, rad = TOUCH_BUTTON_DISTANCE * 1.6, col = 6 },
+	{ act = ACT.fourth, key = Enum.KeyCode.H, fn = useFourth,         ang = 118, rad = TOUCH_BUTTON_DISTANCE * 2.2, col = 6, row = 1, ui = true },
+	{ act = ACT.song,   key = Enum.KeyCode.N, fn = MU.next,           ang = 143, rad = TOUCH_BUTTON_DISTANCE * 2.2, col = 1, row = 1, ui = true },
+	{ act = ACT.music,  key = Enum.KeyCode.M, fn = MU.toggle,         ang = 168, rad = TOUCH_BUTTON_DISTANCE * 2.2, col = 2, row = 1, ui = true },
 }
 
 local function setLabel(i, text)
@@ -4667,7 +5232,7 @@ local function setLabel(i, text)
 	labelCache[i] = text
 	local b = BUTTONS[i]
 	if desktopButtons[i] then
-		desktopButtons[i].Text = text .. "\n[" .. b.key.Name .. "]"
+		desktopButtons[i].Text = UserInputService.TouchEnabled and text or (text .. "\n[" .. b.key.Name .. "]")
 	else
 		pcall(CAS.SetTitle, CAS, b.act, text)
 	end
@@ -4688,7 +5253,6 @@ local function styleButton(b, x, y)
 	make("UIStroke", { Color = Color3.fromRGB(255, 214, 60), Thickness = 2.5 }, b)
 end
 
--- places the Roblox touch buttons in two arcs, well away from the jump button
 local function placeTouchButtons()
 	task.wait(0.25)
 	local ok = pcall(function()
@@ -4707,8 +5271,9 @@ local function placeTouchButtons()
 			end
 		end
 		for i, b in ipairs(BUTTONS) do
-			local btn = CAS:GetButton(b.act)
+			local btn = (not b.ui) and CAS:GetButton(b.act)
 			local center = centers[i]
+			if not btn then continue end
 			if b.above then center = centers[b.above] - Vector2.new(0, btn.AbsoluteSize.Y * 1.15) end
 			centers[i] = center
 			btn.Position = UDim2.fromOffset(
@@ -4718,12 +5283,103 @@ local function placeTouchButtons()
 		end
 	end)
 	if not ok then
-		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 } }
+		local fallback = { { 0.1, 0.3 }, { 0.1, 0.6 }, { 0.6, 0.1 }, { 0.8, 0.1 }, { 0.3, 0.6 }, { 0.3, 0.38 }, { 0.45, 0.1 }, { 0.6, 0.35 }, { 0.1, 0.12 }, { 0.28, 0.12 } }
 		for i, b in ipairs(BUTTONS) do
-			CAS:SetPosition(b.act, UDim2.new(fallback[i][1], 0, fallback[i][2], 0))
+			if not b.ui then CAS:SetPosition(b.act, UDim2.new(fallback[i][1], 0, fallback[i][2], 0)) end
 		end
 	end
 end
+
+local SPK = "rbxasset://textures/particles/sparkles_main.dds"
+local SMK = "rbxasset://textures/particles/smoke_main.dds"
+local FIR = "rbxasset://textures/particles/fire_main.dds"
+RB.AURA = {
+	noir = { shape = "Ball", n = 5, spd = 1.4, rad = 6, h = 1.2, size = 2, tex = SMK, rate = 12, psize = 3, speed = 1.5, acc = V3(0, -6, 0), life = 1.6, trans = 0.55 },
+	ivory = { shape = "Block", n = 6, spd = 1.1, rad = 6, h = 1.8, size = 1.3, tex = SPK, rate = 16, psize = 1, speed = 3, acc = V3(0, -3, 0), life = 1.6, trans = 0.2 },
+	azure = { shape = "Block", n = 6, spd = 1.8, rad = 5.5, h = 1.4, size = 1.2, tex = SPK, rate = 10, psize = 1.1, speed = 2, acc = V3(0, 2, 0), life = 1.5, trans = 0.2 },
+	chartreuse = { shape = "Ball", n = 6, spd = 1.2, rad = 5, h = 2.2, size = 1.1, tex = SPK, rate = 18, psize = 0.9, speed = 2, acc = V3(0, 6, 0), life = 1.4, trans = 0.25 },
+	amethyst = { shape = "Block", n = 5, spd = 1.0, rad = 6.5, h = 1.6, size = 1.6, tex = SPK, rate = 10, psize = 1.2, speed = 1.5, acc = V3(0, 1, 0), life = 1.6, trans = 0.2 },
+	crimson = { shape = "Ball", n = 6, spd = 2.0, rad = 5, h = 1.5, size = 1.1, tex = FIR, rate = 14, psize = 1.6, speed = 2, acc = V3(0, 9, 0), life = 1.2, trans = 0.3 },
+	grimgold = { shape = "Cylinder", n = 6, spd = 1.6, rad = 5.5, h = 1.3, size = 1.4, tex = SPK, rate = 14, psize = 1, speed = 2, acc = V3(0, 3, 0), life = 1.4, trans = 0.2 },
+	rainbow = { shape = "Ball", n = 8, spd = 1.9, rad = 6, h = 1.8, size = 1.3, tex = SPK, rate = 28, psize = 1.2, speed = 3, acc = V3(0, 4, 0), life = 1.5, trans = 0.15 },
+}
+
+function RB.auraLoop(my)
+	local key, parts, cfs, anchor, ring = nil, {}, {}, nil, nil
+	local function clear()
+		for _, p in ipairs(parts) do p:Destroy() end
+		parts, cfs = {}, {}
+		if anchor then anchor:Destroy() end
+		anchor = nil
+		if ring then ring:Destroy() end
+		ring = nil
+	end
+	while uiToken == my do
+		RunService.Heartbeat:Wait()
+		local ok, err = pcall(function()
+			local st = STYLES[styleIdx]
+			local k = st.id .. (bigMode and "B" or "N")
+			local A = RB.AURA[st.id]
+			if k ~= key then
+				key = k
+				clear()
+				if A then
+					local sz = A.size * (bigMode and 1.5 or 1)
+					for i = 1, A.n do
+						local c1, c2 = st.pal[i % 3 + 1], st.pal[(i + 1) % 3 + 1]
+						local p = fxPart({
+							Shape = Enum.PartType[A.shape], Color = c1, Transparency = 0.15,
+							Size = A.shape == "Cylinder" and V3(sz * 0.3, sz, sz) or V3(sz, sz, sz),
+						})
+						local a0 = make("Attachment", { Position = V3(0, sz * 0.8, 0) }, p)
+						local a1 = make("Attachment", { Position = V3(0, -sz * 0.8, 0) }, p)
+						make("Trail", {
+							Attachment0 = a0, Attachment1 = a1, Lifetime = 0.55, Color = ColorSequence.new(c1, c2),
+							Transparency = NumberSequence.new(0.2, 1), LightEmission = 1, FaceCamera = true,
+						}, p)
+						parts[i] = p
+					end
+					anchor = fxPart({ Transparency = 1, Size = V3(3, 0.2, 3) })
+					make("ParticleEmitter", {
+						Texture = A.tex, Rate = A.rate * (bigMode and 2 or 1), Lifetime = NumberRange.new(A.life * 0.7, A.life),
+						Speed = NumberRange.new(A.speed * 0.5, A.speed), SpreadAngle = Vector2.new(180, 180), Acceleration = A.acc,
+						Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, A.psize * (bigMode and 1.5 or 1)), NumberSequenceKeypoint.new(1, 0) }),
+						Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, A.trans), NumberSequenceKeypoint.new(1, 1) }),
+						Color = colorSeq(st.pal, 0), LightEmission = 1, Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-60, 60),
+					}, anchor)
+					ring = disc(Vector3.zero, 9, 0.2, st.pal[1], 0.7)
+				end
+			end
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if not (A and root and anchor) then return end
+			local mul = bigMode and 1.7 or 1
+			local t = os.clock()
+			local base = root.Position
+			local rainbow = st.id == "rainbow"
+			for i, p in ipairs(parts) do
+				local a = t * A.spd + i / A.n * TAU
+				local r = A.rad * mul * (1 + 0.15 * math.sin(t * 2 + i))
+				local y = -1 + (i % 3) * 1.6 + math.sin(t * 1.7 + i) * A.h
+				cfs[i] = CFrame.new(base + V3(math.cos(a) * r, y, math.sin(a) * r)) * CFrame.Angles(t + i, t * 1.3, i)
+				if rainbow then p.Color = RB.hue(t * 0.3 + i / A.n, 0.8, 1) end
+			end
+			workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+			local foot = base - V3(0, 2.8, 0)
+			anchor.CFrame = CFrame.new(foot)
+			local d = (9 + math.sin(t * 3) * 1.2) * mul
+			ring.Size = V3(0.2, d, d)
+			ring.CFrame = CFrame.new(foot) * CFrame.Angles(0, 0, math.rad(90))
+			if rainbow then ring.Color = RB.hue(t * 0.4, 0.8, 1) end
+		end)
+		if not ok then
+			warn("[IvoryPeriastron] aura: " .. tostring(err))
+			key = nil
+			task.wait(1)
+		end
+	end
+	clear()
+end
+table.insert(connections, { Disconnect = function() uiToken = uiToken + 1 end })
 
 local function showButtons()
 	equipped = true
@@ -4732,11 +5388,28 @@ local function showButtons()
 			if state ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
 			b.fn()
 			return Enum.ContextActionResult.Sink
-		end, true, b.key)
+		end, not b.ui, b.key)
 	end
 
 	if UserInputService.TouchEnabled then
 		task.spawn(placeTouchButtons)
+		-- Own on-screen buttons for Legion / Next Song / Play Music (always visible, no Roblox action-button limit)
+		desktopGui = make("ScreenGui", { Name = "IvoryTouchButtons", ResetOnSpawn = false, DisplayOrder = 9, IgnoreGuiInset = true }, guiParent)
+		table.insert(ownedInstances, desktopGui)
+		local n = 0
+		for i, b in ipairs(BUTTONS) do
+			if b.ui then
+				n = n + 1
+				local btn = make("TextButton", { Name = b.act }, desktopGui)
+				styleButton(btn, 0, 0)
+				btn.AnchorPoint = Vector2.new(1, 0)
+				btn.Size = UDim2.fromOffset(66, 66)
+				btn.TextSize = 11
+				btn.Position = UDim2.new(1, -14, 0.22, (n - 1) * 74)
+				btn.Activated:Connect(b.fn)
+				desktopButtons[i] = btn
+			end
+		end
 	else
 		desktopGui = make("ScreenGui", { Name = "IvoryButtons", ResetOnSpawn = false, DisplayOrder = 9 }, guiParent)
 		table.insert(ownedInstances, desktopGui)
@@ -4748,8 +5421,9 @@ local function showButtons()
 		end
 	end
 
-	uiToken += 1
+	uiToken = uiToken + (1)
 	local my = uiToken
+	task.spawn(RB.auraLoop, my)
 	local function cd(last, total, ready)
 		local left = total - (os.clock() - last)
 		return left > 0 and tostring(math.ceil(left)) or ready
@@ -4765,6 +5439,9 @@ local function showButtons()
 			setLabel(5, st.short)
 			setLabel(6, bigMode and "Destructive: ON" or "Destructive: OFF")
 			setLabel(7, cd(lastUlt, ultCooldown(), st.u))
+			setLabel(8, st.id == "rainbow" and cd(RB.last, bigMode and 8 or 22, "Legion") or "Legion (Rainbow)")
+			setLabel(9, "Next Song")
+			setLabel(10, MU.on and "Stop Music" or "Play Music")
 			task.wait(0.1)
 		end
 	end)
@@ -4772,7 +5449,7 @@ end
 
 local function hideButtons()
 	equipped = false
-	uiToken += 1
+	uiToken = uiToken + (1)
 	for _, name in pairs(ACT) do pcall(CAS.UnbindAction, CAS, name) end
 	if desktopGui then desktopGui:Destroy() end
 	desktopGui = nil
@@ -4780,7 +5457,6 @@ local function hideButtons()
 	table.clear(labelCache)
 end
 
----------------------------------------------------------------- give via clone
 local function setup(tool)
 	table.insert(connections, tool.Equipped:Connect(function()
 		currentTool = tool
@@ -4790,7 +5466,6 @@ local function setup(tool)
 	table.insert(connections, tool.Unequipped:Connect(function()
 		if equipped then hideButtons() end
 	end))
-	-- clicking / tapping the screen swings the sword (with the swing animation); abilities are only on the buttons
 	table.insert(connections, tool.Activated:Connect(function() swing(tool) end))
 end
 
@@ -4813,7 +5488,6 @@ table.insert(connections, player.CharacterAdded:Connect(function()
 	give()
 end))
 
--- three Roblox core notifications on execute; the first one shows DuaKNo's avatar for everyone
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
 	local function notify(title, text, icon, dur)
@@ -4837,4 +5511,12 @@ task.spawn(function()
 	notify("Join Discord server for more", "discord.gg/empgqd5qpq", nil, 9)
 end)
 
-print("Rip-off Rainbow Pariastron OMEGA v7 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability  [G] third ability.")
+print("Rip-off Rainbow Pariastron OMEGA v9 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability  [G] third ability.")
+
+end)
+if not __ivOk then
+	warn("[IvoryPeriastron] failed to start: " .. tostring(__ivErr))
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Periastron error", Text = tostring(__ivErr):sub(1, 180), Duration = 15 })
+	end)
+end
