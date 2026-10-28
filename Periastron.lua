@@ -1,5 +1,5 @@
 --[[
-	Rip-off Rainbow Pariastron OMEGA v9 - CLIENT-SIDE
+	Rip-off Rainbow Pariastron OMEGA v10 - CLIENT-SIDE
 	Execute once. Gives "Rip-off Rainbow Pariastron OMEGA" to your Backpack (re-given every respawn).
 	Equip it and the buttons appear. Click / tap the screen = swing the sword (swing animation + small slash).
 
@@ -132,7 +132,7 @@ for i, st in ipairs(STYLES) do
 		local p = st.pal
 		local m = {
 			id = st.id, style = i, big = big, name = st.short .. (big and " Destructive" or ""),
-			scale = (big and 5.4 or 1) * (st.id == "rainbow" and 1.25 or 1), cooldown = big and 2 or 10, dark = st.dark or false,
+			scale = st.id == "rainbow" and (big and 9.5 or 2.2) or (big and 5.4 or 1), cooldown = big and 2 or 10, dark = st.dark or false,
 			pal = p, glow = st.glow, accent = st.accent, mid = p[2], hi = p[1],
 		}
 		if m.dark then
@@ -4250,13 +4250,13 @@ NOVAS.rainbow = function(ctx)
 	local origin = root.Position
 	local ents = {}
 	local npcL = nearestFirst(npcsIn(origin, range), origin)
-	local ncap = m.big and 14 or 6
+	local ncap = m.big and 30 or 12
 	for i = 1, math.min(#npcL, ncap) do
 		ents[#ents + 1] = { n = npcL[i], root = npcL[i].root }
 	end
 	local partL = ownedRoots(origin, math.min(range, 450))
 	table.sort(partL, function(a, b) return (a.Position - origin).Magnitude < (b.Position - origin).Magnitude end)
-	local pcap = m.big and 18 or 8
+	local pcap = m.big and 36 or 14
 	for i = 1, math.min(#partL, pcap) do
 		ents[#ents + 1] = { root = partL[i] }
 	end
@@ -4303,7 +4303,7 @@ NOVAS.rainbow = function(ctx)
 				local HI = 46 * sq
 				local R = 16 * sq
 				local gY = ground.Y + 4
-				local dmg = m.big and { 7, 9, 12 } or { 5, 6, 8 }
+				local dmg = m.big and { 25, 35, 60 } or { 14, 18, 24 }
 				local grabbed = false
 				local slamDone = { false, false, false }
 				local t0 = os.clock()
@@ -4348,7 +4348,13 @@ NOVAS.rainbow = function(ctx)
 									shockwave(ground, 24 * sq, 0.45, 0, RB.hue(si / 3 + idx * 0.1, 0.85, 1))
 									shockwave(ground, 13 * sq, 0.4, 0.05, WHITE)
 									burst(anchorPart(ground + V3(0, 2, 0), 2), { "Stars", "Rays_Thick" })
-									physBlast(ground, 20 * sq, m.scale * 0.45)
+									physBlast(ground, 34 * sq, m.scale * 0.8)
+									pillar(ground, 12 * sq, RB.hue(si / 3 + idx * 0.1, 0.9, 1), 0.3, 0.7)
+									if si == NS then
+										for _, v in ipairs(npcsIn(ground, 26 * sq)) do
+											if not (e.n and v.model == e.n.model) then hurt(v, m.big and 12 or 6) end
+										end
+									end
 									if e.n and e.n.hum.Parent and e.n.hum.Health > 0 then hurt(e.n, dmg[si]) end
 									if idx <= 3 then sfx(si == NS and SFX.explosion2 or SFX.psionic, 0.8, anchorPart(ground, 3), false, rf(0.9, 1.3)) end
 									if idx == 1 then shake(0.35, 1.2 * sq) end
@@ -4369,7 +4375,7 @@ NOVAS.rainbow = function(ctx)
 				if er.Parent then
 					if e.n then
 						if e.n.hum.Parent and e.n.hum.Health > 0 then
-							hurtFrac(e.n, m.big and 0.12 or 0.08)
+							hurtFrac(e.n, m.big and 1 or 0.4)
 							launch(e.n, flatDir(flat(er.Position - origin)) * 150 + V3(0, 100, 0), 1.3)
 						end
 					else
@@ -4392,9 +4398,9 @@ end
 SECOND.rainbow = function(ctx)
 	local m, root, hum, character = ctx.m, ctx.root, ctx.hum, ctx.character
 	local sq = math.sqrt(m.scale)
-	local COUNT = m.big and 26 or 13
-	local BOUNCES = 5
-	local SPEED = 330
+	local COUNT = m.big and 52 or 26
+	local BOUNCES = m.big and 9 or 7
+	local SPEED = 420
 	local aim = aimPoint() or (root.Position + root.CFrame.LookVector * 100)
 	local origin = root.Position + V3(0, 2.5, 0)
 	local base = (aim - origin)
@@ -4429,7 +4435,7 @@ SECOND.rainbow = function(ctx)
 
 	local frame, lastOwned = 0, 0
 	local t0 = os.clock()
-	while os.clock() - t0 < 5 and root.Parent do
+	while os.clock() - t0 < 6 and root.Parent do
 		local dt = RunService.Heartbeat:Wait()
 		frame = frame + (1)
 		local anyAlive = false
@@ -4446,6 +4452,14 @@ SECOND.rainbow = function(ctx)
 						s.dir = (s.dir - 2 * s.dir:Dot(hit.Normal) * hit.Normal).Unit
 						s.bounces = s.bounces + (1)
 						shockwave(hit.Position + hit.Normal * 0.3, 10 * sq, 0.35, 0, s.col)
+						if i % 3 == 0 then
+							local bp = hit.Position
+							for _, v in ipairs(npcsIn(bp, 16 * sq)) do
+								hurt(v, m.big and 12 or 6)
+								launch(v, flatDir(flat(v.root.Position - bp)) * 140 + V3(0, 90, 0), 0.6)
+							end
+							physBlast(bp, 16 * sq, m.scale * 0.4)
+						end
 						burst(anchorPart(hit.Position + hit.Normal * 2, 2), { "Stars" })
 						if i <= 5 or i % 4 == 0 then sfx(SFX.bling, 0.6, anchorPart(hit.Position, 2), false, 0.7 + 0.18 * s.bounces + rf(0, 0.15)) end
 						if s.bounces % 2 == 1 and i % 3 == 0 then sfx(SFX.stormBolt, 0.5, anchorPart(hit.Position, 2), false, rf(1, 1.6)) end
@@ -4462,18 +4476,18 @@ SECOND.rainbow = function(ctx)
 				if s.alive then
 					s.p.CFrame = CFrame.lookAt(s.pos, s.pos + s.dir)
 					if (frame + i) % 4 == 0 then
-						for _, n in ipairs(npcsIn(s.pos, 9 * sq)) do
+						for _, n in ipairs(npcsIn(s.pos, 14 * sq)) do
 							if (s.cd[n.model] or 0) < os.clock() then
 								s.cd[n.model] = os.clock() + 0.5
-								hurt(n, m.big and 8 or 6)
-								launch(n, s.dir * 100 + V3(0, 70, 0), 0.5)
+								hurt(n, m.big and 30 or 16)
+								launch(n, s.dir * 160 + V3(0, 90, 0), 0.5)
 								burst(anchorPart(n.root.Position, 2), { "Stars", "Rays_Thick" })
 								sfx(SFX.psionic, 0.35, anchorPart(n.root.Position, 2), false, rf(1.3, 1.9))
 							end
 						end
 					end
 					if (frame + i) % 12 == 0 then
-						for _, r2 in ipairs(ownedRoots(s.pos, 9 * sq)) do
+						for _, r2 in ipairs(ownedRoots(s.pos, 14 * sq)) do
 							kick(r2, s.dir * 130 + V3(0, 70, 0), randomSpin(12))
 						end
 					end
@@ -4496,7 +4510,7 @@ end
 ULT.rainbow = function(ctx)
 	local m, root, character = ctx.m, ctx.root, ctx.character
 	local sq = math.sqrt(m.scale)
-	local R = m.big and 520 or 260
+	local R = m.big and 900 or 420
 	local center = root.Position
 	local params = rayParams(character)
 	local ground = groundAt(center, params)
@@ -4548,14 +4562,15 @@ ULT.rainbow = function(ctx)
 				shake(0.25, 0.7 * sq)
 				sfx(SFX.bling, 0.7, root, false, 0.8 + beatN * 0.06)
 				if beatN % 2 == 1 then sfx(SFX.synthTone, 0.6, root, false, 0.9 + beatN * 0.05) end
-				for i = 1, 4 do
+				for i = 1, (m.big and 10 or 6) do
 					local a = rf(0, TAU)
 					local rr = rf(30, R * 0.5)
 					local pp = groundAt(center + V3(math.cos(a) * rr, 0, math.sin(a) * rr), params)
 					pillar(pp, rf(6, 12) * sq, RB.hue(rf(0, 1), 0.85, 1), 0.3, 0.6)
+					for _, v in ipairs(npcsIn(pp, 18 * sq)) do hurt(v, m.big and 6 or 3) end
 				end
 				for _, n in ipairs(npcsIn(center, R)) do
-					hurt(n, m.big and 4 or 3)
+					hurt(n, m.big and 16 or 8)
 					launch(n, V3(rf(-30, 30), 85 + beatN * 4, rf(-30, 30)), 0.5)
 				end
 				for _, r2 in ipairs(ownedRoots(center, R)) do
@@ -4575,7 +4590,7 @@ ULT.rainbow = function(ctx)
 	for i = 1, 7 do shockwave(ground, R * 0.12 * (1 + i * 0.45), 0.8, i * 0.05, RB.hue(i / 7, 0.9, 1)) end
 	pillar(ground, 30 * sq, WHITE, 0.2, 1.2)
 	for _, n in ipairs(npcsIn(c, R)) do
-		hurtFrac(n, m.big and 0.28 or 0.18)
+		hurtFrac(n, m.big and 1 or 0.5)
 		launch(n, flatDir(flat(n.root.Position - c)) * 170 + V3(0, 120, 0), 1.4)
 	end
 	physBlast(c, R * 0.5, m.scale)
@@ -4680,6 +4695,7 @@ function RB.dirTo(a, b)
 end
 
 RB.imp = {}
+function RB.dm(m, base) return base * (m.big and 4 or 2.5) end
 RB.imp.noir = function(p, n, m, sq, s)
 	sfx(SFX.psionic, 0.9, anchorPart(p, 3), false, rf(0.8, 1))
 	local ball = ballPart(p, 3, Color3.new(0.02, 0, 0.05), 0, { Material = Enum.Material.SmoothPlastic })
@@ -4691,7 +4707,7 @@ RB.imp.noir = function(p, n, m, sq, s)
 		tweenKill(rim, 0.25, { Size = Vector3.one, Transparency = 1 })
 	end)
 	for _, v in ipairs(npcsIn(p, 40 * sq)) do
-		hurt(v, 6)
+		hurt(v, RB.dm(m, 6))
 		launch(v, RB.dirTo(v.root.Position, p) * 110 + V3(0, 25, 0), 0.7)
 	end
 	for _, r2 in ipairs(ownedRoots(p, 40 * sq)) do kick(r2, RB.dirTo(r2.Position, p) * 120, randomSpin(10)) end
@@ -4702,7 +4718,7 @@ RB.imp.ivory = function(p, n, m, sq, s)
 	shockwave(p, 26 * sq, 0.5, 0, s.pal[1])
 	burst(anchorPart(p, 2), { "Stars" })
 	for _, v in ipairs(npcsIn(p, 30 * sq)) do
-		hurt(v, 6)
+		hurt(v, RB.dm(m, 6))
 		launch(v, V3(0, 120, 0), 0.9)
 	end
 	physBlast(p, 24 * sq, m.scale * 0.4)
@@ -4719,7 +4735,7 @@ RB.imp.azure = function(p, n, m, sq, s)
 	end
 	shockwave(p, 28 * sq, 0.5, 0, s.pal[1])
 	for _, v in ipairs(npcsIn(p, 30 * sq)) do
-		hurt(v, 5)
+		hurt(v, RB.dm(m, 5))
 		launch(v, V3(0, 0, 0), 2.2)
 	end
 end
@@ -4731,7 +4747,7 @@ RB.imp.chartreuse = function(p, n, m, sq, s)
 	task.spawn(function()
 		for _ = 1, 3 do
 			for _, v in ipairs(npcsIn(p, 16 * sq)) do
-				hurt(v, 1.5)
+				hurt(v, RB.dm(m, 1.5))
 				launch(v, V3(rf(-10, 10), 35, rf(-10, 10)), 0.5)
 			end
 			task.wait(0.7)
@@ -4749,7 +4765,7 @@ RB.imp.amethyst = function(p, n, m, sq, s)
 		tweenKill(sp, 0.6, { Transparency = 1 }, ES.Quad, ED.In, 1.4)
 	end
 	for _, v in ipairs(npcsIn(p, 22 * sq)) do
-		hurt(v, 6)
+		hurt(v, RB.dm(m, 6))
 		launch(v, V3(rf(-20, 20), 100, rf(-20, 20)), 0.9)
 	end
 	physBlast(p, 20 * sq, m.scale * 0.4)
@@ -4761,7 +4777,7 @@ RB.imp.crimson = function(p, n, m, sq, s)
 	shockwave(p, 20 * sq, 0.4, 0.05, WHITE)
 	burst(anchorPart(p, 2), { "Supernova" })
 	for _, v in ipairs(npcsIn(p, 32 * sq)) do
-		hurt(v, 7)
+		hurt(v, RB.dm(m, 7))
 		launch(v, flatDir(flat(v.root.Position - p)) * 150 + V3(0, 90, 0), 1)
 	end
 	physBlast(p, 28 * sq, m.scale * 0.6)
@@ -4777,10 +4793,22 @@ RB.imp.grimgold = function(p, n, m, sq, s)
 	end
 	shockwave(p, 26 * sq, 0.5, 0, s.pal[1])
 	for _, v in ipairs(npcsIn(p, 28 * sq)) do
-		hurt(v, 7)
+		hurt(v, RB.dm(m, 7))
 		launch(v, flatDir(flat(v.root.Position - p)) * 90 + V3(0, 100, 0), 1)
 	end
 	physBlast(p, 22 * sq, m.scale * 0.5)
+end
+RB.imp.rainbow = function(p, n, m, sq, s)
+	sfx(SFX.explosion2, 1, anchorPart(p, 3), false, 1)
+	flash(p, 0.6, m)
+	for i = 1, 6 do shockwave(p, (16 + i * 8) * sq, 0.6, i * 0.05, RB.hue(i / 6, 0.9, 1)) end
+	pillar(p, 14 * sq, WHITE, 0.2, 0.9)
+	burst(anchorPart(p, 2), { "Supernova", "Stars" })
+	for _, v in ipairs(npcsIn(p, 44 * sq)) do
+		hurt(v, RB.dm(m, 7))
+		launch(v, flatDir(flat(v.root.Position - p)) * 170 + V3(0, 120, 0), 1)
+	end
+	physBlast(p, 40 * sq, m.scale * 0.7)
 end
 
 RB.legion = function(ctx)
@@ -4897,6 +4925,15 @@ RB.legion = function(ctx)
 	local origin = root.Position
 	local list = nearestFirst(npcsIn(origin, maxRange()), origin)
 	local aim = ctx.aim
+	local cpos = aim
+	if #list > 0 then
+		local sum = V3(0, 0, 0)
+		for _, n in ipairs(list) do sum = sum + n.root.Position end
+		cpos = sum / #list
+	end
+	cpos = groundAt(cpos, params)
+	local top = cpos + V3(0, 105 * sq, 0)
+
 	local targets = {}
 	for i = 1, 8 do
 		if #list > 0 then
@@ -4909,9 +4946,40 @@ RB.legion = function(ctx)
 	end
 	local function tgtPos(tg)
 		if tg.n and tg.n.root.Parent then return tg.n.root.Position end
-		return tg.pos or tg.n and tg.n.root.Position or aim
+		return tg.pos or aim
 	end
-	local flying = 0
+
+	-- the giant Rainbow sword rises above the battlefield and GROWS as every other Periastron fuses into it
+	local big = sw[8]
+	big.state = "fly"
+	big.hover = true
+	big.grow, big.cur = 1, 1
+	big.trail.Enabled = true
+	tweenKill(halo, 1, { Transparency = 1 })
+	tweenKill(halo2, 1, { Transparency = 1 })
+	sfx(SFX.charge, 1.4, root, false, 0.9)
+	sfx(SFX.energyCharge, 1.2, root)
+	task.spawn(function()
+		local startPos = big.model:GetPivot().Position
+		local hl = big.model:FindFirstChildOfClass("Highlight")
+		local rt0 = os.clock()
+		while big.hover and big.model.Parent do
+			RunService.Heartbeat:Wait()
+			local t = os.clock() - rt0
+			local e = 1 - (1 - math.min(t / 1.2, 1)) ^ 2
+			local pos = startPos:Lerp(top, e)
+			if t > 1.2 then pos = top + V3(0, math.sin(t * 2.2) * 2.5 * sq, 0) end
+			place(big, pos, V3(0, 1, 0))
+			if math.abs(big.grow - big.cur) > 0.01 then
+				big.cur = big.cur + (big.grow - big.cur) * 0.18
+				pcall(function() big.model:ScaleTo(big.scale * big.cur) end)
+			end
+			if hl then hl.FillColor = RB.hue(t * 0.6, 0.8, 1) end
+		end
+	end)
+
+	-- STAGE 1: 7 Periastron swords each strike with their own signature blast, then fly up and fuse into the big sword
+	local flying, fused = 0, 0
 	for i = 1, 7 do
 		local s = sw[i]
 		local tg = targets[i]
@@ -4922,7 +4990,7 @@ RB.legion = function(ctx)
 				s.state = "fly"
 				local startPos = s.model:GetPivot().Position
 				local dist = (tgtPos(tg) - startPos).Magnitude
-				local dur = math.max(dist / 340, 0.3)
+				local dur = math.max(dist / 380, 0.3)
 				local tt0 = os.clock()
 				s.trail.Enabled = true
 				sfx(SFX.swordSlash, 0.8, anchorPart(startPos, 3), false, rf(1.1, 1.5))
@@ -4938,72 +5006,116 @@ RB.legion = function(ctx)
 				end
 				local ip = tgtPos(tg)
 				if tg.n then ip = groundAt(ip, params) end
-				RB.imp[s.d.sid](ip, tg.n, m, sq, s)
+				RB.imp[s.d.sid](ip, tg.n, m, sq * 1.6, s)
 				place(s, ip + V3(0, LEN * 0.3, 0), V3(0, -1, 0))
-				task.wait(0.9)
+				task.wait(0.55)
+				local fromP = s.model:GetPivot().Position
+				local fdir = (top - fromP)
+				fdir = fdir.Magnitude > 0.05 and fdir.Unit or V3(0, 1, 0)
+				local side = (i % 2 == 0 and 1 or -1) * 14 * sq
+				local ft0 = os.clock()
+				while true do
+					RunService.Heartbeat:Wait()
+					local p = (os.clock() - ft0) / 0.8
+					if p >= 1 then break end
+					place(s, fromP:Lerp(top, p * p) + V3(math.sin(p * math.pi) * side, 0, 0), fdir)
+				end
+				fused = fused + 1
+				big.grow = 1 + fused * 0.4
+				shockwave(top - V3(0, 60 * sq, 0), 20 * sq, 0.5, 0, s.col)
+				burst(anchorPart(top, 3), { "Stars" })
+				sfx(SFX.bling, 0.9, anchorPart(top, 3), false, 0.8 + fused * 0.1)
 				s.trail.Enabled = false
-				burst(anchorPart(ip + V3(0, 3, 0), 2), { "Stars" })
 				s.model:Destroy()
 			end)
 			if not ok then warn("[IvoryPeriastron] legion sword: " .. tostring(err)) end
 			flying = flying - 1
 		end)
 	end
-	local fw = os.clock()
-	while flying > 0 and os.clock() - fw < 9 do task.wait(0.1) end
-
-	local cpos = aim
-	if #list > 0 then
-		local sum = V3(0, 0, 0)
-		for _, n in ipairs(list) do sum = sum + n.root.Position end
-		cpos = sum / #list
+	local fw, lastPull = os.clock(), 0
+	while flying > 0 and os.clock() - fw < 12 do
+		task.wait(0.1)
+		if os.clock() - lastPull > 0.35 then -- Noir pull: drag everything toward the centre while the swords strike
+			lastPull = os.clock()
+			for _, v in ipairs(npcsIn(cpos, 150 * sq)) do
+				launch(v, RB.dirTo(v.root.Position, cpos + V3(0, 12 * sq, 0)) * 70 + V3(0, 20, 0), 0.4)
+			end
+			for _, r2 in ipairs(ownedRoots(cpos, 150 * sq)) do kick(r2, RB.dirTo(r2.Position, cpos) * 110, randomSpin(8)) end
+		end
 	end
-	cpos = groundAt(cpos, params)
-	local big = sw[8]
-	big.state = "fly"
 	keeping = false
-	sfx(SFX.charge, 1.4, root, false, 0.9)
-	sfx(SFX.energyCharge, 1.2, root)
-	big.trail.Enabled = true
-	local startPos = big.model:GetPivot().Position
-	local top = cpos + V3(0, 95 * sq, 0)
-	local rt0 = os.clock()
-	while os.clock() - rt0 < 1.1 do
-		RunService.Heartbeat:Wait()
-		local p = (os.clock() - rt0) / 1.1
-		local e = 1 - (1 - p) ^ 2
-		pcall(function() big.model:ScaleTo(big.scale * (1 + 1.8 * e)) end)
-		place(big, startPos:Lerp(top, e), V3(0, 1, 0))
-		haloUpdate(os.clock() - t0)
+
+	-- STAGE 2: fully fused. All 8 colours charge, everything is dragged in
+	big.grow = 3.4
+	sfx(SFX.charge, 1.5, root, false, 0.8)
+	sfx(SFX.gong, 1.4, root, false, 0.7)
+	flash(cpos, 1, m)
+	shake(0.8, 1.4 * sq)
+	for i = 1, 5 do shockwave(cpos, (40 + i * 22) * sq, 0.8, i * 0.1, RB.hue(i / 5, 0.9, 1)) end
+	local cw = os.clock()
+	while os.clock() - cw < 0.9 do
+		task.wait(0.1)
+		for _, v in ipairs(npcsIn(cpos, 150 * sq)) do
+			launch(v, RB.dirTo(v.root.Position, cpos + V3(0, 10 * sq, 0)) * 110 + V3(0, 30, 0), 0.3)
+		end
+		for _, r2 in ipairs(ownedRoots(cpos, 150 * sq)) do kick(r2, RB.dirTo(r2.Position, cpos) * 140, randomSpin(10)) end
 	end
+	big.hover = false
+	task.wait(0.05)
+
+	-- STAGE 3: the fused sword slams down
 	local dt0 = os.clock()
 	while os.clock() - dt0 < 0.3 do
 		RunService.Heartbeat:Wait()
 		local p = (os.clock() - dt0) / 0.3
-		place(big, top:Lerp(cpos + V3(0, 14 * sq, 0), p * p), V3(0, -1, 0))
+		place(big, top:Lerp(cpos + V3(0, 24 * sq, 0), p * p), V3(0, -1, 0))
 	end
 	sfx(SFX.explosion2, 1.4, anchorPart(cpos, 4), false, 0.9)
 	sfx(SFX.thunderBoom, 1.3, anchorPart(cpos, 4), false, 1)
 	sfx(SFX.impactExp, 1.2, anchorPart(cpos, 4), false, 0.8)
 	flash(cpos, 1, m)
-	shake(1, 2.2 * sq)
-	for i = 1, 8 do shockwave(cpos, (30 + i * 16) * sq, 0.9, i * 0.05, RB.hue(i / 8, 0.9, 1)) end
-	pillar(cpos, 36 * sq, WHITE, 0.15, 1.4)
-	for i = 1, 6 do
-		local a = i / 6 * TAU
-		pillar(cpos + V3(math.cos(a) * 24 * sq, 0, math.sin(a) * 24 * sq), 12 * sq, RB.hue(i / 6, 0.9, 1), 0.25, 1.1)
-	end
+	shake(1.2, 2.6 * sq)
+	for i = 1, 8 do shockwave(cpos, (36 + i * 20) * sq, 0.9, i * 0.05, RB.hue(i / 8, 0.9, 1)) end
+	pillar(cpos, 44 * sq, WHITE, 0.15, 1.6)
 	burst(anchorPart(cpos + V3(0, 5, 0), 3), { "Supernova", "Stars", "Core" })
-	for _, n in ipairs(npcsIn(cpos, 110 * sq)) do
-		hurtFrac(n, m.big and 0.35 or 0.25)
-		launch(n, flatDir(flat(n.root.Position - cpos)) * 200 + V3(0, 130, 0), 1.5)
+	for _, n in ipairs(npcsIn(cpos, 150 * sq)) do
+		hurtFrac(n, m.big and 0.6 or 0.4)
+		launch(n, V3(rf(-30, 30), 150, rf(-30, 30)), 1.6)
 	end
-	physBlast(cpos, 110 * sq, m.scale)
+	physBlast(cpos, 150 * sq, m.scale)
+
+	-- STAGE 4: Periastron Cascade, all 8 Periastron detonate in turn (7 around the ring, Rainbow in the centre)
+	local ringR = 56 * sq
+	for k = 1, 8 do
+		task.delay(0.15 + (k - 1) * 0.13, function()
+			local sk = sw[k]
+			local bp = cpos
+			if k < 8 then
+				local a = (k - 1) / 7 * TAU
+				bp = groundAt(cpos + V3(math.cos(a) * ringR, 0, math.sin(a) * ringR), params)
+			end
+			pillar(bp, 12 * sq, sk.col, 0.2, 1)
+			local ok2, err2 = pcall(RB.imp[sk.d.sid], bp, nil, m, sq * 1.7, sk)
+			if not ok2 then warn("[IvoryPeriastron] legion cascade: " .. tostring(err2)) end
+		end)
+	end
+	task.wait(0.15 + 8 * 0.13 + 0.4)
+
+	-- STAGE 5: final Chroma Nova
+	sfx(SFX.explosion2, 1.5, anchorPart(cpos, 4), false, 0.7)
+	sfx(SFX.thunderBoom, 1.4, anchorPart(cpos, 4), false, 0.8)
+	flash(cpos, 1, m)
+	shake(1.4, 3 * sq)
+	for i = 1, 10 do shockwave(cpos, (30 + i * 24) * sq, 1, i * 0.04, RB.hue(i / 10, 0.9, 1)) end
+	pillar(cpos, 60 * sq, WHITE, 0.1, 1.8)
+	for _, n in ipairs(npcsIn(cpos, 170 * sq)) do
+		hurtFrac(n, m.big and 1 or 0.35)
+		launch(n, flatDir(flat(n.root.Position - cpos)) * 260 + V3(0, 140, 0), 1.6)
+	end
+	physBlast(cpos, 170 * sq, m.scale * 1.4)
 	task.wait(0.9)
 	big.trail.Enabled = false
 	big.model:Destroy()
-	tweenKill(halo, 0.6, { Transparency = 1 })
-	tweenKill(halo2, 0.6, { Transparency = 1 })
 	for _, s in ipairs(sw) do if s.model.Parent then s.model:Destroy() end end
 	skyOff(1.2)
 end
@@ -5511,7 +5623,7 @@ task.spawn(function()
 	notify("Join Discord server for more", "discord.gg/empgqd5qpq", nil, 9)
 end)
 
-print("Rip-off Rainbow Pariastron OMEGA v9 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability  [G] third ability.")
+print("Rip-off Rainbow Pariastron OMEGA v10 given. Click = swing  [Z] Nova  [X] Angel's Past  [C] Destructive on/off  [V] Lunge  [B] Periastron style  [F] second ability  [G] third ability.")
 
 end)
 if not __ivOk then
